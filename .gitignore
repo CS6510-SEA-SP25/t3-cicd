@@ -1,0 +1,5 @@
+*.txt
+
+.env
+
+.pipeline/s2.yaml
