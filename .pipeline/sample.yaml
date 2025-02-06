@@ -14,11 +14,11 @@ stages:
 build:
   description: "Build Stage"
   jobs:
-    - name: run-test
-      stage: test
+    - name: compile
+      stage: build
       image: maven:3.8.6
       script:
-        - mvn test
+        - mvn clean install
 
 test:
   description: "Run Test"
