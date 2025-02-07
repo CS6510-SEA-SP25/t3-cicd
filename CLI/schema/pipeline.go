@@ -2,16 +2,18 @@ package schema
 
 import (
 	"errors"
-	"gopkg.in/yaml.v3"
+	"fmt"
 	"log"
 	"os"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Job configuration.
 type JobConfiguration struct {
-	Name         string   `yaml:"name"`   // (required) Name of job within a stage.
-	Stage        string   `yaml:"stage"`  // (required) Stage name.
-	Image        string   `yaml:"image"`  // (required) Docker image to be used.
+	Name         *string  `yaml:"name"`   // (required) Name of job within a stage.
+	Stage        *string  `yaml:"stage"`  // (required) Stage name.
+	Image        *string  `yaml:"image"`  // (required) Docker image to be used.
 	Script       []string `yaml:"script"` // (required) List of scripts to be executed sequentially.
 	Dependencies []string `yaml:"needs"`  // (optional) Jobs within the same statge that must complete successfully before this job can start executing.
 }
@@ -53,17 +55,65 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (bool, error) {
 	log.SetFlags(0)
 	// Validate version
 	if pipeline.Version == nil || *pipeline.Version != "v0" {
-		return false, errors.New("version syntax error")
+		return false, errors.New("syntax error: version")
 	}
 
 	// Validate pipeline info
 	if pipeline.Pipeline == nil || *pipeline.Pipeline.Name == "" {
-		return false, errors.New("pipeline syntax error")
+		return false, errors.New("syntax error: pipeline")
 	}
 
-	// // Validate stages and jobs
-	// stages := pipeline.Stages
-	// jobsMap := make(map[string]map[string]JobConfiguration)
+	// Validate stages and jobs
+	stages := make(map[string]map[string]*JobConfiguration)
+
+	// Check stages
+	if len(pipeline.Stages) == 0 {
+		return false, errors.New("syntax error: empty stages")
+	}
+	for _, stage := range pipeline.Stages {
+		if stage == "" {
+			return false, errors.New("syntax error: stage name must be a non-empty string")
+		} else if _, ok := stages[stage]; ok {
+			return false, errors.New("syntax error: duplicated stages")
+		} else {
+			stages[stage] = make(map[string]*JobConfiguration)
+		}
+	}
+
+	if len(pipeline.Jobs) == 0 {
+		return false, errors.New("syntax error: empty jobs")
+	}
+
+	for _, job := range pipeline.Jobs {
+		// Check format
+		// Name
+		if job.Name == nil {
+			return false, errors.New("syntax error: empty job name")
+		}
+		// Stage
+		if job.Stage == nil {
+			return false, errors.New("syntax error: empty job stage")
+		}
+		if stages[*job.Stage] == nil {
+			return false, errors.New("syntax error: job stage must be defined in stages")
+		}
+		if stages[*job.Stage][*job.Name] != nil {
+			return false, errors.New("syntax error: duplicated job name within a stage")
+		}
+		// Image
+		if job.Image == nil {
+			return false, errors.New("syntax error: empty job image")
+		}
+		// Script
+		if len(job.Script) == 0 {
+			return false, errors.New("syntax error: empty job script")
+		}
+
+		// TODO: Check logic
+		stages[*job.Stage][*job.Name] = &job
+	}
+
+	fmt.Printf("Jobs mapping by stages: %#v", stages)
 
 	return true, nil
 }
