@@ -1,7 +1,5 @@
 *.txt
 
-.pipeline/s2.yaml
-
 .DS_Store
 
 # If you prefer the allow list template instead of the deny list, see community template:
@@ -13,6 +11,7 @@
 *.dll
 *.so
 *.dylib
+*.bin
 
 # Test binary, built with `go test -c`
 *.test
@@ -29,3 +28,6 @@ go.work.sum
 
 # env file
 .env
+
+# Executables
+gocc

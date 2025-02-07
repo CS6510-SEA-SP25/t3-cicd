@@ -2,7 +2,6 @@ package schema
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"os"
 
@@ -51,8 +50,6 @@ func ParsePipelineConfiguration(filename string) (*PipelineConfiguration, error)
 
 // Validate Pipeline configuration
 func (pipeline *PipelineConfiguration) ValidateConfiguration() (bool, error) {
-	log.SetPrefix("Greetings: ")
-	log.SetFlags(0)
 	// Validate version
 	if pipeline.Version == nil || *pipeline.Version != "v0" {
 		return false, errors.New("syntax error: version")
@@ -113,7 +110,7 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (bool, error) {
 		stages[*job.Stage][*job.Name] = &job
 	}
 
-	fmt.Printf("Jobs mapping by stages: %#v", stages)
+	log.Fatalf("Jobs mapping by stages: %#v\n", stages)
 
 	return true, nil
 }
