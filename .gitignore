@@ -3,3 +3,6 @@
 .env
 
 .pipeline/s2.yaml
+
+
+.DS_Store

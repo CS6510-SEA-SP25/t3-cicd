@@ -11,48 +11,43 @@ stages:
   - docs
 
 # Stages defined below
-build:
-  description: "Build Stage"
-  jobs:
-    - name: compile
-      stage: build
-      image: maven:3.8.6
-      script:
-        - mvn clean install
+jobs:
+  # build
+  - name: compile
+    stage: build
+    image: maven:3.8.6
+    script:
+      - mvn clean install
 
-test:
-  description: "Run Test"
-  jobs:
-    - name: run-test
-      stage: test
-      image: maven:3.8.6
-      script:
-        - mvn test
+  # test
+  - name: run-test
+    stage: test
+    image: maven:3.8.6
+    script:
+      - mvn test
 
-    - name: check-coverage
-      stage: test
-      image: maven:3.8.6
-      script:
-        - mvn verify
-        - mvn jacoco:report
-      needs:
-        - run-test # Job dependency within a stage.
+  - name: check-coverage
+    stage: test
+    image: maven:3.8.6
+    script:
+      - mvn verify
+      - mvn jacoco:report
+    needs:
+      - run-test # Job dependency within a stage.
 
-    - name: checkstyle
-      stage: test
-      image: maven:3.8.6
-      script:
-        - mvn checkstyle:check
-        - mvn checkstyle:checkstyle
-      needs:
-        - run-test
+  - name: checkstyle
+    stage: test
+    image: maven:3.8.6
+    script:
+      - mvn checkstyle:check
+      - mvn checkstyle:checkstyle
+    needs:
+      - run-test
 
-docs:
-  description: "Generate documentations"
-  jobs:
-    - name: documentation-job-1-name
-      stage: docs
-      image: maven:3.8.6
-      script:
-        - ps -u
-        - mvn javadoc:javadoc
+  # docs
+  - name: documentation-job-1-name
+    stage: docs
+    image: maven:3.8.6
+    script:
+      - ps -u
+      - mvn javadoc:javadoc
