@@ -33,7 +33,7 @@ jobs:
       - mvn verify
       - mvn jacoco:report
     needs:
-      - run-test # Job dependency within a stage.
+      - checkstyle # Job dependency within a stage.
 
   - name: checkstyle
     stage: test
@@ -45,7 +45,7 @@ jobs:
       - run-test
 
   # docs
-  - name: documentation-job-1-name
+  - name: generate-docs
     stage: docs
     image: maven:3.8.6
     script:

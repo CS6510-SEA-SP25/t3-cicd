@@ -47,6 +47,11 @@ var rootCmd = &cobra.Command{
 	},
 }
 
+// Format error message
+func logPipelineErr(err error, line int, column int) {
+	log.New(os.Stderr, "", 0).Fatalf("%s:%d:%d: %s", filename, line, column, err.Error())
+}
+
 /*
 Validate current directory
 */
@@ -86,8 +91,9 @@ func HandleFilenameFlag() {
 	} else {
 		log.Printf("Using input configuration file at %v\n", filename)
 	}
+
 	// Parse configuration file
-	pConfig, err := schema.ParsePipelineConfiguration(filename)
+	pConfig, err := schema.ParseYAMLFile(filename)
 	pipeline = *pConfig
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
@@ -95,19 +101,23 @@ func HandleFilenameFlag() {
 }
 
 // --check | -c
+// Validate configuration then exit.
 func HandleCheckFlag() {
 	if check {
 		// Validate configuration
-		isPipelineValid, validateErr := pipeline.ValidateConfiguration()
+		isPipelineValid, errLine, errColumn, validateErr := pipeline.ValidateConfiguration()
 		if validateErr != nil {
-			log.Fatal(validateErr)
+			// log.Fatal(validateErr)
+			logPipelineErr(validateErr, errLine, errColumn)
 		} else {
 			if isPipelineValid {
-				log.Fatal("Pipeline configuration is valid.")
+				log.Print("Pipeline configuration is valid.")
 			} else {
-				log.Fatal("Pipeline configuration is invalid.")
+				log.Print("Pipeline configuration is invalid.")
 			}
 		}
+
+		log.Printf("Execution Order: %#v\n", pipeline.ExecOrder)
 	}
 }
 
