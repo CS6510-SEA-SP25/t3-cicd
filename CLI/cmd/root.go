@@ -21,7 +21,6 @@ Command line variables
 var (
 	filename string
 	check    bool
-	verbose  bool
 	pipeline schema.PipelineConfiguration
 )
 
@@ -34,9 +33,6 @@ var RootCmd = &cobra.Command{
 	SilenceErrors: true,
 	// gocc [flags]
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// verbose mod
-		HandleVerboseFlag()
-
 		// validate
 		err := isGitRoot()
 		if err != nil {
@@ -118,9 +114,6 @@ func HandleCheckFlag() error {
 	return nil
 }
 
-// --verbose | -v
-func HandleVerboseFlag() {}
-
 // Init function
 func init() {
 	// --filename | -f
@@ -128,9 +121,6 @@ func init() {
 
 	// --check | -c
 	RootCmd.PersistentFlags().BoolVarP(&check, "check", "c", false, "Validate the pipeline configuration file.")
-
-	// --verbose | -v
-	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output.")
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

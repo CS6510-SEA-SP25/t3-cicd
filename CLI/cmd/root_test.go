@@ -11,16 +11,17 @@ import (
 Test running the CLI in Git-initialized directory
 */
 func TestGitRepository(t *testing.T) {
-
 	// Store the original directory to restore later
-	originalDir, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("failed to get original directory: %v", err)
-	}
-	defer os.Chdir(originalDir) // Restore original directory after test
+	originalDir, _ := os.Getwd()
+	// Restore original directory after test
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Fatalf("Failed to return to original directory: %v\n", err)
+		}
+	}()
 
 	// Change to a wrong directory (assume it's root for test purposes)
-	err = os.Chdir("/")
+	err := os.Chdir("/")
 	if err != nil {
 		t.Fatalf("failed to change directory: %v", err)
 	}
@@ -43,14 +44,16 @@ Test --filename | -f
 */
 func TestFileNameFlag(t *testing.T) {
 	// Store the original directory to restore later
-	originalDir, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("failed to get original directory: %v", err)
-	}
-	defer os.Chdir(originalDir) // Restore original directory after test
+	originalDir, _ := os.Getwd()
+	// Restore original directory after test
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Fatalf("Failed to return to original directory: %v\n", err)
+		}
+	}()
 
 	// Change to a wrong directory (assume it's root for test purposes)
-	err = os.Chdir("../../")
+	err := os.Chdir("../../")
 	if err != nil {
 		t.Fatalf("failed to change directory: %v", err)
 	}
@@ -62,14 +65,22 @@ func TestFileNameFlag(t *testing.T) {
 		t.Errorf("unexpected error message: %v", err)
 	}
 
-	cmd.RootCmd.Flags().Set("filename", "")
+	err = cmd.RootCmd.Flags().Set("filename", "")
+	if err != nil {
+		t.Errorf("unexpected error message: %v", err)
+	}
+
 	err = cmd.Execute()
 	if err != nil {
 		t.Errorf("unexpected error message: %v", err)
 	}
 
 	// Config file not exists
-	cmd.RootCmd.Flags().Set("filename", "./not_exist.yaml")
+	err = cmd.RootCmd.Flags().Set("filename", "./not_exist.yaml")
+	if err != nil {
+		t.Errorf("unexpected error message: %v", err)
+	}
+
 	err = cmd.Execute()
 	if err == nil {
 		t.Errorf("expected an error but got none")
@@ -81,7 +92,11 @@ func TestFileNameFlag(t *testing.T) {
 	}
 
 	// Config file exists but not YAML
-	cmd.RootCmd.Flags().Set("filename", "./README.md")
+	err = cmd.RootCmd.Flags().Set("filename", "./README.md")
+	if err != nil {
+		t.Errorf("unexpected error message: %v", err)
+	}
+
 	err = cmd.Execute()
 	if err == nil {
 		t.Errorf("expected an error but got none")
@@ -93,7 +108,11 @@ func TestFileNameFlag(t *testing.T) {
 	}
 
 	// Default config file
-	cmd.RootCmd.Flags().Set("filename", ".pipelines/pipeline.yaml")
+	err = cmd.RootCmd.Flags().Set("filename", ".pipelines/pipeline.yaml")
+	if err != nil {
+		t.Errorf("unexpected error message: %v", err)
+	}
+
 	err = cmd.Execute()
 	if err != nil {
 		t.Errorf("unexpected error message: %v", err)
@@ -105,19 +124,25 @@ Test --check | -c
 */
 func TestCheckFlag(t *testing.T) {
 	// Store the original directory to restore later
-	originalDir, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("failed to get original directory: %v", err)
-	}
-	defer os.Chdir(originalDir) // Restore original directory after test
+	originalDir, _ := os.Getwd()
+	// Restore original directory after test
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Fatalf("Failed to return to original directory: %v\n", err)
+		}
+	}()
 
 	// Change to a wrong directory (assume it's root for test purposes)
-	err = os.Chdir("../../")
+	err := os.Chdir("../../")
 	if err != nil {
 		t.Fatalf("failed to change directory: %v", err)
 	}
 
-	cmd.RootCmd.Flags().Set("check", "true")
+	err = cmd.RootCmd.Flags().Set("check", "true")
+	if err != nil {
+		t.Errorf("unexpected error message: %v", err)
+	}
+
 	err = cmd.Execute()
 	if err != nil {
 		t.Errorf("unexpected error message: %v", err)
@@ -129,20 +154,30 @@ Validate config file
 */
 func TestCyclicDeps(t *testing.T) {
 	// Store the original directory to restore later
-	originalDir, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("failed to get original directory: %v", err)
-	}
-	defer os.Chdir(originalDir) // Restore original directory after test
+	originalDir, _ := os.Getwd()
+	// Restore original directory after test
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Fatalf("Failed to return to original directory: %v\n", err)
+		}
+	}()
 
 	// Change to a wrong directory (assume it's root for test purposes)
-	err = os.Chdir("../../")
+	err := os.Chdir("../../")
 	if err != nil {
 		t.Fatalf("failed to change directory: %v", err)
 	}
 
-	cmd.RootCmd.Flags().Set("filename", "./.pipelines/test/cyclic_deps.yaml")
-	cmd.RootCmd.Flags().Set("check", "true")
+	err = cmd.RootCmd.Flags().Set("filename", "./.pipelines/test/cyclic_deps.yaml")
+	if err != nil {
+		t.Errorf("unexpected error message: %v", err)
+	}
+
+	err = cmd.RootCmd.Flags().Set("check", "true")
+	if err != nil {
+		t.Errorf("unexpected error message: %v", err)
+	}
+
 	err = cmd.Execute()
 	if err == nil {
 		t.Errorf("expected an error but got none")

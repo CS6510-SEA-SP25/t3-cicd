@@ -20,14 +20,6 @@ jobs:
       - mvn clean install
 
   # test
-  - name: run-test
-    stage: test
-    image: maven:3.8.6
-    script:
-      - mvn test
-    needs:
-      - check-coverage
-
   - name: check-coverage
     stage: test
     image: maven:3.8.6
@@ -44,7 +36,13 @@ jobs:
       - mvn checkstyle:check
       - mvn checkstyle:checkstyle
     needs:
-      - run-test
+      - check-coverage
+
+  - name: run-test
+    stage: test
+    image: maven:3.8.6
+    script:
+      - mvn test
 
   # docs
   - name: generate-docs
