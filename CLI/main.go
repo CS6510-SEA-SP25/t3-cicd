@@ -12,5 +12,8 @@ func main() {
 	log.SetPrefix("GoCC: ")
 	log.SetFlags(0)
 
-	cmd.Execute()
+	err := cmd.Execute()
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
 }

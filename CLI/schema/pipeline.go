@@ -2,7 +2,6 @@ package schema
 
 import (
 	"errors"
-	"log"
 	"os"
 
 	"fmt"
@@ -191,7 +190,7 @@ func ParseYAMLFile(filename string) (*PipelineConfiguration, error) {
 	var root yaml.Node
 
 	if err := yaml.Unmarshal(data, &root); err != nil {
-		log.Fatalf("%#v\n", err)
+		return nil, err
 	}
 
 	parsePipelineConfig(&root, &pipeline)
@@ -200,18 +199,18 @@ func ParseYAMLFile(filename string) (*PipelineConfiguration, error) {
 }
 
 // Validate Pipeline configuration
-func (pipeline *PipelineConfiguration) ValidateConfiguration() (bool, int, int, error) {
+func (pipeline *PipelineConfiguration) ValidateConfiguration() (int, int, error) {
 	// Validate version
 	if pipeline.Version == nil || *pipeline.Version != "v0" {
-		return false, pipeline.VersionLine, pipeline.PipelineColumn, errors.New("syntax error: version")
+		return pipeline.VersionLine, pipeline.PipelineColumn, errors.New("syntax error: version")
 	}
 
 	// Validate pipeline info
 	if pipeline.Pipeline == nil {
-		return false, pipeline.PipelineLine, pipeline.PipelineColumn, errors.New("syntax error: missing key `pipeline`")
+		return pipeline.PipelineLine, pipeline.PipelineColumn, errors.New("syntax error: missing key `pipeline`")
 	}
 	if pipeline.Pipeline.Name == nil || *pipeline.Pipeline.Name == "" {
-		return false, pipeline.Pipeline.NameLine, pipeline.Pipeline.NameColumn, errors.New("syntax error: pipeline name is required")
+		return pipeline.Pipeline.NameLine, pipeline.Pipeline.NameColumn, errors.New("syntax error: pipeline name is required")
 	}
 
 	// Validate stages and jobs
@@ -219,17 +218,17 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (bool, int, int, 
 
 	// Check stages
 	if pipeline.Stages == nil {
-		return false, pipeline.StagesLine, pipeline.StagesColumn, errors.New("syntax error: missing key `stages`")
+		return pipeline.StagesLine, pipeline.StagesColumn, errors.New("syntax error: missing key `stages`")
 	}
 	if len(pipeline.Stages) == 0 {
-		return false, pipeline.StagesLine, pipeline.StagesColumn, errors.New("syntax error: stages must have at least one item")
+		return pipeline.StagesLine, pipeline.StagesColumn, errors.New("syntax error: stages must have at least one item")
 	}
 
 	for _, stage := range pipeline.Stages {
 		if stage == "" {
-			return false, pipeline.StagesLine, pipeline.StagesColumn, errors.New("syntax error: stage name must be a non-empty string")
+			return pipeline.StagesLine, pipeline.StagesColumn, errors.New("syntax error: stage name must be a non-empty string")
 		} else if _, ok := stages[stage]; ok {
-			return false, pipeline.StagesLine, pipeline.StagesColumn, errors.New("syntax error: duplicated stages")
+			return pipeline.StagesLine, pipeline.StagesColumn, errors.New("syntax error: duplicated stages")
 		} else {
 			stages[stage] = make(map[string]*JobConfiguration)
 		}
@@ -237,43 +236,58 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (bool, int, int, 
 
 	// Check jobs
 	if len(pipeline.Jobs) == 0 {
-		return false, pipeline.JobsLine, pipeline.JobsColumn, errors.New("syntax error: empty jobs")
+		return pipeline.JobsLine, pipeline.JobsColumn, errors.New("syntax error: empty jobs")
 	}
 
 	for _, job := range pipeline.Jobs {
 		// Check format
 		// Name
-		if job.Name == nil || *job.Name == "" {
-			return false, job.NameLine, job.NameColumn, errors.New("syntax error: empty job name")
+		if job.Name == nil {
+			return job.NameLine, job.NameColumn, errors.New("syntax error: missing job name")
 		}
-		// Stage
-		if job.Stage == nil {
-			return false, job.StageLine, job.StageColumn, errors.New("syntax error: empty job stage")
-		}
-		if stages[*job.Stage] == nil {
-			return false, job.StageLine, job.StageColumn, errors.New("syntax error: stage `" + *job.Stage + "` must be defined in stages")
-		}
-		if stages[*job.Stage][*job.Name] != nil {
-			return false, job.StageLine, job.StageColumn, errors.New("syntax error: duplicated job name within a stage")
-		}
-		// Image
-		if job.Image == nil || *job.Image == "" {
-			return false, job.ImageLine, job.ImageColumn, errors.New("syntax error: empty job image")
-		}
-		// Script
-		if len(job.Script) == 0 {
-			return false, job.ScriptLine, job.ScriptColumn, errors.New("syntax error: empty job script")
+		if *job.Name == "" {
+			return pipeline.JobsLine, pipeline.JobsColumn, errors.New("syntax error: job name must be a non-empty string")
 		}
 
-		// TODO: Check logic
+		// Stage
+		if job.Stage == nil {
+			return job.NameLine, job.NameColumn, errors.New("syntax error: job `" + *job.Name + "` is missing stage")
+		}
+		if *job.Stage == "" {
+			return job.StageLine, job.StageColumn, errors.New("syntax error: job stage must be a non-empty string")
+		}
+		if stages[*job.Stage] == nil {
+			return job.StageLine, job.StageColumn, errors.New("syntax error: stage `" + *job.Stage + "` must be defined in stages")
+		}
+		if stages[*job.Stage][*job.Name] != nil {
+			return job.StageLine, job.StageColumn, errors.New("syntax error: duplicated job name within a stage")
+		}
+
+		// Image
+		if job.Image == nil {
+			return job.NameLine, job.NameColumn, errors.New("syntax error: job `" + *job.Name + "` is missing image")
+		}
+		if *job.Image == "" {
+			return job.ImageLine, job.ImageColumn, errors.New("syntax error: job image must be a non-empty string")
+		}
+
+		// Script
+		if job.Script == nil {
+			return job.NameLine, job.NameColumn, errors.New("syntax error: job `" + *job.Name + "` is missing script")
+		}
+		if len(job.Script) == 0 {
+			return job.ScriptLine, job.ScriptColumn, errors.New("syntax error: empty job script")
+		}
+
 		stages[*job.Stage][*job.Name] = &job
 	}
 
+	// Validate logic
 	pipeline.ExecOrder = make(map[string][][]string)
 	for stage, jobs := range stages {
 		// check stages with empty jobs
 		if len(jobs) == 0 {
-			return false, pipeline.StagesLine, pipeline.StagesColumn, errors.New("syntax error: stage `" + stage + "` must have at least one job")
+			return pipeline.StagesLine, pipeline.StagesColumn, errors.New("syntax error: stage `" + stage + "` must have at least one job")
 		}
 
 		// check cyclic dependencies among jobs within a stage
@@ -287,7 +301,7 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (bool, int, int, 
 			for _, dependency := range job.Dependencies {
 				// dependency job not exist
 				if jobs[dependency] == nil {
-					return false, 0, 0, errors.New("syntax error: dependency job not exist")
+					return 0, 0, errors.New("syntax error: dependency job not exist")
 				}
 				indegrees[dependency] += 1
 				graph[*job.Name] = append(graph[*job.Name], dependency)
@@ -308,7 +322,20 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (bool, int, int, 
 			}
 
 			if len(parallel[len(parallel)-1]) == 0 {
-				return false, 0, 0, errors.New("syntax error: cyclic dependencies detected")
+				// find cycle
+				cycle := make([]string, 0)
+				for remainingJobName := range indegrees {
+					visited := make(map[string]bool)
+					if jobs[remainingJobName].checkCycle(visited, jobs, &cycle) {
+						break
+					}
+
+				}
+				if len(cycle) == 0 {
+					panic("cycle is not supposed to be empty")
+				}
+				cycleHead := cycle[0]
+				return jobs[cycleHead].NameLine, jobs[cycleHead].NameColumn, errors.New("syntax error: cyclic dependencies detected")
 			}
 
 			// update indegrees
@@ -323,5 +350,31 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (bool, int, int, 
 		pipeline.ExecOrder[stage] = parallel
 	}
 
-	return true, 0, 0, nil
+	return 0, 0, nil
+}
+
+// TODO: Refactor this code
+// func () getExecutionOrder() (int, int, error) {
+
+// }
+
+/*
+Trace the dependencies cycle.
+*/
+func (job *JobConfiguration) checkCycle(visited map[string]bool, jobs map[string]*JobConfiguration, cycle *[]string) bool {
+	if visited[*job.Name] {
+		return true
+	}
+
+	visited[*job.Name] = true
+	for _, name := range job.Dependencies {
+		child := jobs[name]
+		*cycle = append(*cycle, name)
+		if child.checkCycle(visited, jobs, cycle) {
+			return true
+		}
+		*cycle = (*cycle)[:len(*cycle)-1]
+	}
+
+	return false
 }
