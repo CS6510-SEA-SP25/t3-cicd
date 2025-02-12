@@ -25,6 +25,8 @@ jobs:
     image: maven:3.8.6
     script:
       - mvn test
+    needs:
+      - check-coverage
 
   - name: check-coverage
     stage: test

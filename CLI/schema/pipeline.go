@@ -3,6 +3,7 @@ package schema
 import (
 	"errors"
 	"os"
+	"strings"
 
 	"fmt"
 
@@ -335,7 +336,8 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (int, int, error)
 					panic("cycle is not supposed to be empty")
 				}
 				cycleHead := cycle[0]
-				return jobs[cycleHead].NameLine, jobs[cycleHead].NameColumn, errors.New("syntax error: cyclic dependencies detected")
+				cycleStr := strings.Join(cycle, " -> ")
+				return jobs[cycleHead].NameLine, jobs[cycleHead].NameColumn, errors.New("syntax error: cyclic dependencies detected: " + cycleStr)
 			}
 
 			// update indegrees
