@@ -18,11 +18,11 @@ before:
     - cd CLI && make all
 
 builds:
-  - main: ./pipeci
+  - dir: ./CLI
+    main: ./pipeci
     binary: pipeci
     id:
       "pipeci"
-    dir: CLI
       # set versioning with tags or other strategies
     # version: { { .Tag } }
     ldflags: "-s -w"
