@@ -25,6 +25,9 @@ jobs:
   test:
     name: Test and Coverage
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./CLI
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -36,9 +39,10 @@ jobs:
         run: |
           go mod tidy
           echo "Tidy done"
-          echo "Start coverage"
-          chmod +x ./script_coverage.sh
-          ./script_coverage.sh > ./reports/test-summary.txt
+      - name: Generate executable
+        run: chmod +x script_coverage.sh
+      - name: Run
+        run: ./script_coverage.sh > ./reports/test-summary.txt
       - name: Upload Go test results
         uses: actions/upload-artifact@v4
         with:
