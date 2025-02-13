@@ -18,7 +18,7 @@ before:
     - cd CLI && make all
 
 builds:
-  - main: ./CLI/pipeci
+  - main: ./pipeci
     binary: pipeci
     id:
       "pipeci"
