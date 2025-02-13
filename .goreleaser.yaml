@@ -13,14 +13,15 @@ project_name: pipeci
 before:
   hooks:
     # You may remove this if you don't use go modules.
-    - go mod tidy
+    - cd CLI && go mod tidy
     # you may remove this if you don't need go generate
-    - make all
+    - cd CLI && make all
 
 builds:
-  - main: ./CLI
-    binary:
-      pipeci
+  - main: ./CLI/pipeci
+    binary: pipeci
+    id:
+      "pipeci"
       # set versioning with tags or other strategies
     # version: { { .Tag } }
     ldflags: "-s -w"
