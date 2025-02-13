@@ -30,4 +30,4 @@ go.work.sum
 .env
 
 # Executables
-gocc
+pipeci

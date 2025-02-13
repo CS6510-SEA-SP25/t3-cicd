@@ -1,4 +1,4 @@
-module cicd/gocc
+module cicd/pipeci
 
 go 1.23.4
 
@@ -12,6 +12,6 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 )
 
-replace cicd/gocc/schema => ./schema
+replace cicd/pipeci/schema => ./schema
 
 replace cicd/cli/cmd => ./cmd

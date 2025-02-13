@@ -1,7 +1,7 @@
 package cmd_test
 
 import (
-	"cicd/gocc/cmd"
+	"cicd/pipeci/cmd"
 	"os"
 	"strings"
 	"testing"

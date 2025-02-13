@@ -1,6 +1,6 @@
 test:
 	@echo TEST
-	go test cicd/gocc/cmd
+	go test cicd/pipeci/cmd
 	@echo "--------------------------------------------"
 
 coverage:

@@ -1,6 +1,6 @@
-# GoCC CLI application
+# pipeci CLI application
 
-This folder contains the source code for the CLI application layer written in Golang. GoCC for Go CI/CD.
+This folder contains the source code for the CLI application layer written in Golang. pipeci for Go CI/CD.
 
 # Installation
 
@@ -37,34 +37,34 @@ Below is a brief description of the CLI application source code
 
 Please see `Makefile` for more details on each part.
 
-Upon make success, an executable file `gocc` should be installed in the CLI folder. There are two ways to test this.
+Upon make success, an executable file `pipeci` should be installed in the CLI folder. There are two ways to test this.
 
-- Copy `gocc` to the project root folder.
+- Copy `pipeci` to the project root folder.
 
 - Add GOPATH to PATH variable.
 
-Once you have done this step, `gocc` should work outside of the CLI folder.
+Once you have done this step, `pipeci` should work outside of the CLI folder.
 
 Example:
 
 ```
-❯ which gocc
-gocc
+❯ which pipeci
+pipeci
 
 ❯ cd ..
 
-❯ which gocc
-/Users/nguyencanhminh/go/bin/gocc
+❯ which pipeci
+/Users/nguyencanhminh/go/bin/pipeci
 
-❯ gocc -h
-GoCC helps you execute your CI/CD pipelines on both local and remote environments.
+❯ pipeci -h
+pipeci helps you execute your CI/CD pipelines on both local and remote environments.
 
 Usage:
-  gocc [flags]
+  pipeci [flags]
 
 Flags:
   -c, --check             Validate the pipeline configuration file.
   -f, --filename string   Path to the pipeline configuration file. (default ".pipelines/pipeline.yaml")
-  -h, --help              help for gocc
+  -h, --help              help for pipeci
 
 ```
