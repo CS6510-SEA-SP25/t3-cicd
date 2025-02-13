@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -ex
+
 echo "Start testing"
 
 # Clean test cache
