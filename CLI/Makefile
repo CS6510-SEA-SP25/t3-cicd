@@ -5,7 +5,7 @@ test:
 
 coverage:
 	@echo CODE COVERAGE
-	./scripts/coverage.sh
+	./coverage.sh
 	@echo "--------------------------------------------"
 
 linter:
