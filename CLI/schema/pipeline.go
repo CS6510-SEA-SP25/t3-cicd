@@ -10,54 +10,43 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Location of ConfigurationNode in YAML file.
+type YAMLFileLocation struct {
+	Line   int
+	Column int
+}
+
+// Configuration Node contains value and location of YAML element.
+type ConfigurationNode[T any] struct {
+	Value    T
+	Location *YAMLFileLocation
+}
+
 // Job configuration.
 type JobConfiguration struct {
-	Name         *string  `yaml:"name"`   // (required) Name of job within a stage.
-	Stage        *string  `yaml:"stage"`  // (required) Stage name.
-	Image        *string  `yaml:"image"`  // (required) Docker image to be used.
-	Script       []string `yaml:"script"` // (required) List of scripts to be executed sequentially.
-	Dependencies []string `yaml:"needs"`  // (optional) Jobs within the same statge that must complete successfully before this job can start executing.
-
-	// YAML Node line number
-	NameLine         int
-	StageLine        int
-	ImageLine        int
-	ScriptLine       int
-	DependenciesLine int
-
-	// YAML Node column number
-	NameColumn         int
-	StageColumn        int
-	ImageColumn        int
-	ScriptColumn       int
-	DependenciesColumn int
+	// (required) Name of job within a stage.
+	Name *ConfigurationNode[string]
+	// (required) Stage name.
+	Stage *ConfigurationNode[string]
+	// (required) Docker image to be used.
+	Image *ConfigurationNode[string]
+	// (required) List of scripts to be executed sequentially.
+	Script *ConfigurationNode[[]string]
+	// (optional) Jobs within the same statge that must complete successfully before this job can start executing.
+	Dependencies *ConfigurationNode[[]string]
 }
 
 // Pipeline identifier info.
 type PipelineInfo struct {
-	Name       *string `yaml:"name"` // (required) Name of pipeline.
-	NameLine   int
-	NameColumn int
+	Name *ConfigurationNode[string] // (required) Name of pipeline.
 }
 
 // Pipeline configuration
 type PipelineConfiguration struct {
-	Version  *string            `yaml:"version"` // (required) API version. Currently set at v0.
-	Pipeline *PipelineInfo      `yaml:"pipeline"`
-	Stages   []string           `yaml:"stages"` // (required) List of stages. Also represent the order of execution.
-	Jobs     []JobConfiguration `yaml:"jobs"`   // (required) List of jobs' configuration. Each stage has at least one job.
-
-	// YAML Node line number
-	PipelineLine int
-	VersionLine  int
-	StagesLine   int
-	JobsLine     int
-
-	// YAML Node column number
-	PipelineColumn int
-	VersionColumn  int
-	StagesColumn   int
-	JobsColumn     int
+	Version  *ConfigurationNode[string] // (required) API version. Currently set at v0.
+	Pipeline *ConfigurationNode[PipelineInfo]
+	Stages   *ConfigurationNode[[]string]           // (required) List of stages. Also represent the order of execution.
+	Jobs     *ConfigurationNode[[]JobConfiguration] // (required) List of jobs' configuration. Each stage has at least one job.
 
 	/*
 		Jobs execution order for each stage (topological)
@@ -86,30 +75,24 @@ func parsePipelineConfig(root *yaml.Node, config *PipelineConfiguration) {
 
 		switch keyNode.Value {
 		case "version":
-			config.Version = &valueNode.Value
-			config.VersionLine = keyNode.Line
-			config.VersionColumn = keyNode.Column
+			config.Version = &ConfigurationNode[string]{Value: valueNode.Value, Location: &YAMLFileLocation{Line: keyNode.Line, Column: keyNode.Column}}
 		case "pipeline":
-			config.Pipeline = &PipelineInfo{}
-			config.PipelineLine = keyNode.Line
-			config.PipelineColumn = keyNode.Column
-			parsePipelineInfo(valueNode, config.Pipeline)
+			config.Pipeline = &ConfigurationNode[PipelineInfo]{Location: &YAMLFileLocation{Line: keyNode.Line, Column: keyNode.Column}}
+			parsePipelineInfo(valueNode, &config.Pipeline.Value)
 		case "stages":
-			config.StagesLine = keyNode.Line
-			config.StagesColumn = keyNode.Column
+			config.Stages = &ConfigurationNode[[]string]{Value: make([]string, 0), Location: &YAMLFileLocation{Line: keyNode.Line, Column: keyNode.Column}}
 			if valueNode.Kind == yaml.SequenceNode {
 				for _, item := range valueNode.Content {
-					config.Stages = append(config.Stages, item.Value)
+					config.Stages.Value = append(config.Stages.Value, item.Value)
 				}
 			}
 		case "jobs":
-			config.JobsLine = keyNode.Line
-			config.JobsColumn = keyNode.Column
+			config.Jobs = &ConfigurationNode[[]JobConfiguration]{Value: make([]JobConfiguration, 0), Location: &YAMLFileLocation{Line: keyNode.Line, Column: keyNode.Column}}
 			if valueNode.Kind == yaml.SequenceNode {
 				for _, jobNode := range valueNode.Content {
 					var job JobConfiguration
 					parseJobConfig(jobNode, &job)
-					config.Jobs = append(config.Jobs, job)
+					config.Jobs.Value = append(config.Jobs.Value, job)
 				}
 			}
 		}
@@ -129,9 +112,7 @@ func parsePipelineInfo(node *yaml.Node, pipeline *PipelineInfo) {
 
 		switch keyNode.Value {
 		case "name":
-			pipeline.Name = &valueNode.Value
-			pipeline.NameLine = keyNode.Line
-			pipeline.NameColumn = keyNode.Column
+			pipeline.Name = &ConfigurationNode[string]{Value: valueNode.Value, Location: &YAMLFileLocation{Line: keyNode.Line, Column: keyNode.Column}}
 		}
 	}
 }
@@ -149,31 +130,23 @@ func parseJobConfig(node *yaml.Node, job *JobConfiguration) {
 
 		switch keyNode.Value {
 		case "name":
-			job.Name = &valueNode.Value
-			job.NameLine = keyNode.Line
-			job.NameColumn = keyNode.Column
+			job.Name = &ConfigurationNode[string]{Value: valueNode.Value, Location: &YAMLFileLocation{Line: keyNode.Line, Column: keyNode.Column}}
 		case "stage":
-			job.Stage = &valueNode.Value
-			job.StageLine = keyNode.Line
-			job.StageColumn = keyNode.Column
+			job.Stage = &ConfigurationNode[string]{Value: valueNode.Value, Location: &YAMLFileLocation{Line: keyNode.Line, Column: keyNode.Column}}
 		case "image":
-			job.Image = &valueNode.Value
-			job.ImageLine = keyNode.Line
-			job.ImageColumn = keyNode.Column
+			job.Image = &ConfigurationNode[string]{Value: valueNode.Value, Location: &YAMLFileLocation{Line: keyNode.Line, Column: keyNode.Column}}
 		case "script":
-			job.ScriptLine = keyNode.Line
-			job.ScriptColumn = keyNode.Column
+			job.Script = &ConfigurationNode[[]string]{Value: make([]string, 0), Location: &YAMLFileLocation{Line: keyNode.Line, Column: keyNode.Column}}
 			if valueNode.Kind == yaml.SequenceNode {
 				for _, item := range valueNode.Content {
-					job.Script = append(job.Script, item.Value)
+					job.Script.Value = append(job.Script.Value, item.Value)
 				}
 			}
 		case "needs":
-			job.DependenciesLine = keyNode.Line
-			job.DependenciesColumn = keyNode.Column
+			job.Dependencies = &ConfigurationNode[[]string]{Value: make([]string, 0), Location: &YAMLFileLocation{Line: keyNode.Line, Column: keyNode.Column}}
 			if valueNode.Kind == yaml.SequenceNode {
 				for _, item := range valueNode.Content {
-					job.Dependencies = append(job.Dependencies, item.Value)
+					job.Dependencies.Value = append(job.Dependencies.Value, item.Value)
 				}
 			}
 		}
@@ -200,18 +173,21 @@ func ParseYAMLFile(filename string) (*PipelineConfiguration, error) {
 }
 
 // Validate Pipeline configuration
-func (pipeline *PipelineConfiguration) ValidateConfiguration() (int, int, error) {
+func (pipeline *PipelineConfiguration) ValidateConfiguration() (YAMLFileLocation, error) {
 	// Validate version
-	if pipeline.Version == nil || *pipeline.Version != "v0" {
-		return pipeline.VersionLine, pipeline.PipelineColumn, errors.New("syntax error: version")
+	if pipeline.Version == nil {
+		return *pipeline.Pipeline.Location, errors.New("syntax error: missing key `pipeline`")
+	}
+	if pipeline.Version.Value != "v0" {
+		return *pipeline.Version.Location, errors.New("syntax error: invalid version")
 	}
 
 	// Validate pipeline info
 	if pipeline.Pipeline == nil {
-		return pipeline.PipelineLine, pipeline.PipelineColumn, errors.New("syntax error: missing key `pipeline`")
+		return *pipeline.Pipeline.Location, errors.New("syntax error: missing key `pipeline`")
 	}
-	if pipeline.Pipeline.Name == nil || *pipeline.Pipeline.Name == "" {
-		return pipeline.Pipeline.NameLine, pipeline.Pipeline.NameColumn, errors.New("syntax error: pipeline name is required")
+	if pipeline.Pipeline.Value.Name == nil || pipeline.Pipeline.Value.Name.Value == "" {
+		return *pipeline.Pipeline.Value.Name.Location, errors.New("syntax error: pipeline name is required")
 	}
 
 	// Validate stages and jobs
@@ -219,68 +195,68 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (int, int, error)
 
 	// Check stages
 	if pipeline.Stages == nil {
-		return pipeline.StagesLine, pipeline.StagesColumn, errors.New("syntax error: missing key `stages`")
+		return *pipeline.Stages.Location, errors.New("syntax error: missing key `stages`")
 	}
-	if len(pipeline.Stages) == 0 {
-		return pipeline.StagesLine, pipeline.StagesColumn, errors.New("syntax error: stages must have at least one item")
+	if len(pipeline.Stages.Value) == 0 {
+		return *pipeline.Stages.Location, errors.New("syntax error: stages must have at least one item")
 	}
 
-	for _, stage := range pipeline.Stages {
+	for _, stage := range pipeline.Stages.Value {
 		if stage == "" {
-			return pipeline.StagesLine, pipeline.StagesColumn, errors.New("syntax error: stage name must be a non-empty string")
+			return *pipeline.Stages.Location, errors.New("syntax error: stage name must be a non-empty string")
 		} else if _, ok := stages[stage]; ok {
-			return pipeline.StagesLine, pipeline.StagesColumn, errors.New("syntax error: duplicated stages")
+			return *pipeline.Stages.Location, errors.New("syntax error: duplicated stages")
 		} else {
 			stages[stage] = make(map[string]*JobConfiguration)
 		}
 	}
 
 	// Check jobs
-	if len(pipeline.Jobs) == 0 {
-		return pipeline.JobsLine, pipeline.JobsColumn, errors.New("syntax error: empty jobs")
+	if len(pipeline.Jobs.Value) == 0 {
+		return *pipeline.Jobs.Location, errors.New("syntax error: empty jobs")
 	}
 
-	for _, job := range pipeline.Jobs {
+	for _, job := range pipeline.Jobs.Value {
 		// Check format
 		// Name
 		if job.Name == nil {
-			return job.NameLine, job.NameColumn, errors.New("syntax error: missing job name")
+			return *job.Name.Location, errors.New("syntax error: missing job name")
 		}
-		if *job.Name == "" {
-			return pipeline.JobsLine, pipeline.JobsColumn, errors.New("syntax error: job name must be a non-empty string")
+		if job.Name.Value == "" {
+			return *pipeline.Jobs.Location, errors.New("syntax error: job name must be a non-empty string")
 		}
 
 		// Stage
 		if job.Stage == nil {
-			return job.NameLine, job.NameColumn, errors.New("syntax error: job `" + *job.Name + "` is missing stage")
+			return *job.Name.Location, errors.New("syntax error: job `" + job.Name.Value + "` is missing stage")
 		}
-		if *job.Stage == "" {
-			return job.StageLine, job.StageColumn, errors.New("syntax error: job stage must be a non-empty string")
+		if job.Stage.Value == "" {
+			return *job.Stage.Location, errors.New("syntax error: job stage must be a non-empty string")
 		}
-		if stages[*job.Stage] == nil {
-			return job.StageLine, job.StageColumn, errors.New("syntax error: stage `" + *job.Stage + "` must be defined in stages")
+		if stages[job.Stage.Value] == nil {
+			return *job.Stage.Location, errors.New("syntax error: stage `" + job.Stage.Value + "` must be defined in stages")
 		}
-		if stages[*job.Stage][*job.Name] != nil {
-			return job.StageLine, job.StageColumn, errors.New("syntax error: duplicated job name within a stage")
+		if stages[job.Stage.Value][job.Name.Value] != nil {
+			return *job.Stage.Location, errors.New("syntax error: duplicated job name within a stage")
 		}
 
 		// Image
 		if job.Image == nil {
-			return job.NameLine, job.NameColumn, errors.New("syntax error: job `" + *job.Name + "` is missing image")
+			return *job.Name.Location, errors.New("syntax error: job `" + job.Name.Value + "` is missing image")
 		}
-		if *job.Image == "" {
-			return job.ImageLine, job.ImageColumn, errors.New("syntax error: job image must be a non-empty string")
+		if job.Image.Value == "" {
+			return *job.Image.Location, errors.New("syntax error: job image must be a non-empty string")
 		}
 
 		// Script
 		if job.Script == nil {
-			return job.NameLine, job.NameColumn, errors.New("syntax error: job `" + *job.Name + "` is missing script")
+			return *job.Name.Location, errors.New("syntax error: job `" + job.Name.Value + "` is missing script")
 		}
-		if len(job.Script) == 0 {
-			return job.ScriptLine, job.ScriptColumn, errors.New("syntax error: empty job script")
+		if len(job.Script.Value) == 0 {
+			return *job.Script.Location, errors.New("syntax error: empty job script")
 		}
 
-		stages[*job.Stage][*job.Name] = &job
+		stages[job.Stage.Value][job.Name.Value] = &job
 	}
 
 	// Validate logic
@@ -288,7 +264,7 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (int, int, error)
 	for stage, jobs := range stages {
 		// check stages with empty jobs
 		if len(jobs) == 0 {
-			return pipeline.StagesLine, pipeline.StagesColumn, errors.New("syntax error: stage `" + stage + "` must have at least one job")
+			return *pipeline.Stages.Location, errors.New("syntax error: stage `" + stage + "` must have at least one job")
 		}
 
 		// check cyclic dependencies among jobs within a stage
@@ -299,13 +275,16 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (int, int, error)
 			if indegrees[name] == 0 {
 				indegrees[name] = 0
 			}
-			for _, dependency := range job.Dependencies {
-				// dependency job not exist
-				if jobs[dependency] == nil {
-					return 0, 0, errors.New("syntax error: dependency job not exist")
+
+			if job.Dependencies != nil {
+				for _, dependency := range job.Dependencies.Value {
+					// dependency job not exist
+					if jobs[dependency] == nil {
+						return *job.Dependencies.Location, errors.New("syntax error: dependency job not exist")
+					}
+					indegrees[job.Name.Value] += 1
+					graph[dependency] = append(graph[dependency], job.Name.Value)
 				}
-				indegrees[dependency] += 1
-				graph[*job.Name] = append(graph[*job.Name], dependency)
 			}
 		}
 
@@ -337,7 +316,7 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (int, int, error)
 				}
 				cycleHead := cycle[0]
 				cycleStr := strings.Join(cycle, " -> ")
-				return jobs[cycleHead].NameLine, jobs[cycleHead].NameColumn, errors.New("syntax error: cyclic dependencies detected: " + cycleStr)
+				return *jobs[cycleHead].Name.Location, errors.New("syntax error: cyclic dependencies detected: " + cycleStr)
 			}
 
 			// update indegrees
@@ -352,7 +331,7 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (int, int, error)
 		pipeline.ExecOrder[stage] = parallel
 	}
 
-	return 0, 0, nil
+	return *pipeline.Version.Location, nil
 }
 
 // TODO: Refactor this code
@@ -364,12 +343,12 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (int, int, error)
 Trace the dependencies cycle.
 */
 func (job *JobConfiguration) checkCycle(visited map[string]bool, jobs map[string]*JobConfiguration, cycle *[]string) bool {
-	if visited[*job.Name] {
+	if visited[job.Name.Value] {
 		return true
 	}
 
-	visited[*job.Name] = true
-	for _, name := range job.Dependencies {
+	visited[job.Name.Value] = true
+	for _, name := range job.Dependencies.Value {
 		child := jobs[name]
 		*cycle = append(*cycle, name)
 		if child.checkCycle(visited, jobs, cycle) {
