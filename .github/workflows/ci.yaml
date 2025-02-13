@@ -41,10 +41,7 @@ jobs:
           go mod tidy
           echo "Tidy done"
       - name: Generate executable
-        run: |
-          chmod +x script_coverage.sh
-          ls -la
-          cat ./script_coverage.sh
+        run: chmod +x script_coverage.sh
       - name: Run
         run: ./script_coverage.sh > ./reports/test-summary.txt
       - name: Upload Go test results
