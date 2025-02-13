@@ -18,19 +18,19 @@ before:
     - make all
 
 builds:
-  - env:
-      - CGO_ENABLED=0
-      - GO111MODULE=on
-    goos:
-      - linux
-      - windows
-      - darwin
   - main: ./CLI
     binary:
       pipeci
       # set versioning with tags or other strategies
     # version: { { .Tag } }
     ldflags: "-s -w"
+    env:
+      - CGO_ENABLED=0
+      - GO111MODULE=on
+    goos:
+      - linux
+      - windows
+      - darwin
 
 archives:
   - formats: ["tar.gz"]
