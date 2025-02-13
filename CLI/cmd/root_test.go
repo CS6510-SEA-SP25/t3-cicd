@@ -150,9 +150,9 @@ func TestCheckFlag(t *testing.T) {
 }
 
 /*
-Validate config file
+Validate config file with wrong format
 */
-func TestCyclicDeps(t *testing.T) {
+func testWrongConfigFile(t *testing.T, filename string, expectedError string) {
 	// Store the original directory to restore later
 	originalDir, _ := os.Getwd()
 	// Restore original directory after test
@@ -168,7 +168,7 @@ func TestCyclicDeps(t *testing.T) {
 		t.Fatalf("failed to change directory: %v", err)
 	}
 
-	err = cmd.RootCmd.Flags().Set("filename", "./.pipelines/test/cyclic_deps.yaml")
+	err = cmd.RootCmd.Flags().Set("filename", filename)
 	if err != nil {
 		t.Errorf("unexpected error message: %v", err)
 	}
@@ -182,9 +182,24 @@ func TestCyclicDeps(t *testing.T) {
 	if err == nil {
 		t.Errorf("expected an error but got none")
 	} else {
-		expectedError := "cyclic dependencies detected"
 		if !strings.Contains(err.Error(), expectedError) {
 			t.Errorf("unexpected error message: %v", err)
 		}
 	}
+}
+
+/*
+Different incorrect format scenarios.
+*/
+func TestCyclicDeps(t *testing.T) {
+	// Cyclic deps
+	testWrongConfigFile(t, "./.pipelines/test/cyclic_deps.yaml", "cyclic dependencies detected")
+	// Empty version
+	testWrongConfigFile(t, "./.pipelines/test/empty_version.yaml", "missing key `version`")
+	// Empty pipeline
+	testWrongConfigFile(t, "./.pipelines/test/empty_pipeline.yaml", "missing key `pipeline`")
+	// Empty stages
+	testWrongConfigFile(t, "./.pipelines/test/empty_stages.yaml", "missing key `stages`")
+	// Empty stages
+	testWrongConfigFile(t, "./.pipelines/test/stage_not_exist.yaml", "stage `not_exist` must be defined in stages")
 }

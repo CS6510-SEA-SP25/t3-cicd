@@ -176,7 +176,7 @@ func ParseYAMLFile(filename string) (*PipelineConfiguration, error) {
 func (pipeline *PipelineConfiguration) ValidateConfiguration() (YAMLFileLocation, error) {
 	// Validate version
 	if pipeline.Version == nil {
-		return *pipeline.Pipeline.Location, errors.New("syntax error: missing key `pipeline`")
+		return *pipeline.Pipeline.Location, errors.New("syntax error: missing key `version`")
 	}
 	if pipeline.Version.Value != "v0" {
 		return *pipeline.Version.Location, errors.New("syntax error: invalid version")
@@ -184,7 +184,7 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (YAMLFileLocation
 
 	// Validate pipeline info
 	if pipeline.Pipeline == nil {
-		return *pipeline.Pipeline.Location, errors.New("syntax error: missing key `pipeline`")
+		return *pipeline.Version.Location, errors.New("syntax error: missing key `pipeline`")
 	}
 	if pipeline.Pipeline.Value.Name == nil || pipeline.Pipeline.Value.Name.Value == "" {
 		return *pipeline.Pipeline.Value.Name.Location, errors.New("syntax error: pipeline name is required")
@@ -195,7 +195,7 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (YAMLFileLocation
 
 	// Check stages
 	if pipeline.Stages == nil {
-		return *pipeline.Stages.Location, errors.New("syntax error: missing key `stages`")
+		return *pipeline.Version.Location, errors.New("syntax error: missing key `stages`")
 	}
 	if len(pipeline.Stages.Value) == 0 {
 		return *pipeline.Stages.Location, errors.New("syntax error: stages must have at least one item")
