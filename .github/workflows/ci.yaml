@@ -1,4 +1,4 @@
-name: Release
+name: Build CI
 
 on:
   pull_request:
@@ -28,12 +28,13 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Run test and coverage script
+        working-directory: CLI
         run: |
-          cd CLI
           go mod tidy
           ./coverage.sh > reports/test-summary.txt
       - name: Upload Go test results
         uses: actions/upload-artifact@v4
+        working-directory: CLI
         with:
           name: TestReports
           path: ./reports/*
@@ -50,9 +51,9 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
+        working-directory: CLI
         with:
           version: v1.60
-          working-directory: CLI
 
   build:
     name: Build and Documentation
@@ -65,8 +66,8 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Build code
+        working-directory: CLI
         run: |
-          cd CLI
           go mod tidy
           go build
 
@@ -81,12 +82,13 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: godoc
+        working-directory: CLI
         run: |
-          cd CLI
           go install golang.org/x/tools/cmd/godoc@latest
           godoc -http=:6060 & wget -r -np -N -E -p -k http://localhost:6060/pkg/cicd/pipeci
       - name: Upload GoDoc
         uses: actions/upload-artifact@v4
+        working-directory: CLI
         with:
           name: GoDoc documentations
           path: ./localhost:6060/*

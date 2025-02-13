@@ -1,6 +1,5 @@
-reports
-
 *.txt
+*.html
 
 .DS_Store
 
@@ -37,7 +36,6 @@ pipeci
 # Added by goreleaser init:
 dist/
 scripts
-
 
 # GoDoc
 localhost:6060
