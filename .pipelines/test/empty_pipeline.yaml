@@ -1,0 +1,50 @@
+version: v0
+
+# List of stages - show order of execution
+stages:
+  - build
+  - test
+  - docs
+
+# Stages defined below
+jobs:
+  # build
+  - name: compile
+    stage: build
+    image: maven:3.8.6
+    script:
+      - mvn clean install
+
+  # test
+  - name: run-test
+    stage: test
+    image: maven:3.8.6
+    script:
+      - mvn test
+
+  - name: check-coverage
+    stage: test
+    image: maven:3.8.6
+    script:
+      - mvn verify
+      - mvn jacoco:report
+    needs:
+      - checkstyle # Job dependency within a stage.
+
+  - name: checkstyle
+    stage: test
+    image: maven:3.8.6
+    script:
+      - mvn checkstyle:check
+      - mvn checkstyle:checkstyle
+    needs:
+      - run-test
+
+  # docs
+  - name: generate-docs
+    stage: docs
+    image: maven:3.8.6
+    imge: maven:3.8.6
+    script:
+      - ps -u
+      - mvn javadoc:javadoc

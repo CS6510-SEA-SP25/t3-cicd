@@ -1,3 +1,5 @@
+reports
+
 *.txt
 
 .DS_Store
@@ -32,6 +34,10 @@ go.work.sum
 # Executables
 pipeci
 
-
 # Added by goreleaser init:
 dist/
+scripts
+
+
+# GoDoc
+localhost:6060

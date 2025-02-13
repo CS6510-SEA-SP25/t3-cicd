@@ -1,0 +1,92 @@
+name: Release
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_call:
+    inputs:
+      tag:
+        description: "Tag for Go project build workflow"
+        required: true
+        type: string
+
+env:
+  GO_VERSION: stable
+  GOLANGCI_LINT_VERSION: v1.60
+
+jobs:
+  test:
+    name: Test and Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Go
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Run test and coverage script
+        run: |
+          cd CLI
+          go mod tidy
+          ./coverage.sh > reports/test-summary.txt
+      - name: Upload Go test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: TestReports
+          path: ./reports/*
+
+  golangci:
+    name: Run Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.60
+          working-directory: CLI
+
+  build:
+    name: Build and Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Build code
+        run: |
+          cd CLI
+          go mod tidy
+          go build
+
+  godoc:
+    name: Generate GoDoc
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: godoc
+        run: |
+          cd CLI
+          go install golang.org/x/tools/cmd/godoc@latest
+          godoc -http=:6060 & wget -r -np -N -E -p -k http://localhost:6060/pkg/cicd/pipeci
+      - name: Upload GoDoc
+        uses: actions/upload-artifact@v4
+        with:
+          name: GoDoc documentations
+          path: ./localhost:6060/*
