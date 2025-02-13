@@ -31,7 +31,7 @@ jobs:
         working-directory: CLI
         run: |
           go mod tidy
-          ./coverage.sh > reports/test-summary.txt
+          ./coverage.sh > ./CLI/reports/test-summary.txt
       - name: Upload Go test results
         uses: actions/upload-artifact@v4
         with:
@@ -48,11 +48,13 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+      - name: Change directory into CLI
+        run: |
+          cd CLI
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: v1.60
-          working-directory: CLI
 
   build:
     name: Build and Documentation
@@ -74,19 +76,14 @@ jobs:
     name: Generate GoDoc
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - name: Checkout
+        uses: actions/checkout@v1
+      - name: Generate GoDoc
+        uses: ktr0731/godoc-action@v0.1.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push changes
+        uses: ad-m/github-push-action@master
         with:
-          go-version: ${{ env.GO_VERSION }}
-      - name: godoc
-        working-directory: CLI
-        run: |
-          go install golang.org/x/tools/cmd/godoc@latest
-          godoc -http=:6060 & wget -r -np -N -E -p -k http://localhost:6060/pkg/cicd/pipeci
-      - name: Upload GoDoc
-        uses: actions/upload-artifact@v4
-        with:
-          name: GoDoc documentations
-          path: ./CLI/localhost:6060/*
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: gh-pages
