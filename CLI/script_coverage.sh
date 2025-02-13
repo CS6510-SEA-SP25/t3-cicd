@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "Start testing"
+
 # Clean test cache
 go clean -testcache
 # run tests and create a coverprofile
