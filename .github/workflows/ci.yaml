@@ -34,10 +34,9 @@ jobs:
           ./coverage.sh > reports/test-summary.txt
       - name: Upload Go test results
         uses: actions/upload-artifact@v4
-        working-directory: CLI
         with:
           name: TestReports
-          path: ./reports/*
+          path: ./CLI/reports/*
 
   golangci:
     name: Run Lint
@@ -88,7 +87,6 @@ jobs:
           godoc -http=:6060 & wget -r -np -N -E -p -k http://localhost:6060/pkg/cicd/pipeci
       - name: Upload GoDoc
         uses: actions/upload-artifact@v4
-        working-directory: CLI
         with:
           name: GoDoc documentations
-          path: ./localhost:6060/*
+          path: ./CLI/localhost:6060/*
