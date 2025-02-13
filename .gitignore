@@ -31,3 +31,7 @@ go.work.sum
 
 # Executables
 pipeci
+
+
+# Added by goreleaser init:
+dist/
