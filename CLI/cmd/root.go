@@ -10,7 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"cicd/gocc/schema"
+	"cicd/pipeci/schema"
 
 	"github.com/spf13/cobra"
 )
@@ -26,12 +26,12 @@ var (
 
 // rootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
-	Use:           "gocc",
+	Use:           "pipeci",
 	Short:         "A CLI application to run pipelines locally.",
-	Long:          `GoCC helps you execute your CI/CD pipelines on both local and remote environments.`,
+	Long:          `pipeci helps you execute your CI/CD pipelines on both local and remote environments.`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
-	// gocc [flags]
+	// pipeci [flags]
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// validate
 		err := isGitRoot()
@@ -101,10 +101,10 @@ func HandleFilenameFlag() error {
 func HandleCheckFlag() error {
 	if check {
 		// Validate configuration
-		errLine, errColumn, validateErr := pipeline.ValidateConfiguration()
+		location, validateErr := pipeline.ValidateConfiguration()
 		if validateErr != nil {
 			// Format error message
-			return fmt.Errorf("%s:%d:%d: %s", filename, errLine, errColumn, validateErr.Error())
+			return fmt.Errorf("%s:%d:%d: %s", filename, location.Line, location.Column, validateErr.Error())
 		} else {
 			log.Print("Pipeline configuration is valid.")
 		}

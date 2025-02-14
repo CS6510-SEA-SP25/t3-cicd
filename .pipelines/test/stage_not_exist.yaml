@@ -14,7 +14,7 @@ stages:
 jobs:
   # build
   - name: compile
-    stage: build
+    stage: not_exist
     image: maven:3.8.6
     script:
       - mvn clean install

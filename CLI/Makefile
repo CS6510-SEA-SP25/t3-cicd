@@ -1,11 +1,11 @@
 test:
 	@echo TEST
-	go test cicd/gocc/cmd
+	go test cicd/pipeci/cmd
 	@echo "--------------------------------------------"
 
 coverage:
 	@echo CODE COVERAGE
-	./scripts/coverage.sh
+	./coverage.sh
 	@echo "--------------------------------------------"
 
 linter:

@@ -4,12 +4,6 @@ version: v0
 pipeline:
   name: pipeline-name
 
-# List of stages - show order of execution
-stages:
-  - build
-  - test
-  - docs
-
 # Stages defined below
 jobs:
   # build

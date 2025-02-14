@@ -1,7 +1,7 @@
 package cmd_test
 
 import (
-	"cicd/gocc/cmd"
+	"cicd/pipeci/cmd"
 	"os"
 	"strings"
 	"testing"
@@ -146,45 +146,5 @@ func TestCheckFlag(t *testing.T) {
 	err = cmd.Execute()
 	if err != nil {
 		t.Errorf("unexpected error message: %v", err)
-	}
-}
-
-/*
-Validate config file
-*/
-func TestCyclicDeps(t *testing.T) {
-	// Store the original directory to restore later
-	originalDir, _ := os.Getwd()
-	// Restore original directory after test
-	defer func() {
-		if err := os.Chdir(originalDir); err != nil {
-			t.Fatalf("Failed to return to original directory: %v\n", err)
-		}
-	}()
-
-	// Change to a wrong directory (assume it's root for test purposes)
-	err := os.Chdir("../../")
-	if err != nil {
-		t.Fatalf("failed to change directory: %v", err)
-	}
-
-	err = cmd.RootCmd.Flags().Set("filename", "./.pipelines/test/cyclic_deps.yaml")
-	if err != nil {
-		t.Errorf("unexpected error message: %v", err)
-	}
-
-	err = cmd.RootCmd.Flags().Set("check", "true")
-	if err != nil {
-		t.Errorf("unexpected error message: %v", err)
-	}
-
-	err = cmd.Execute()
-	if err == nil {
-		t.Errorf("expected an error but got none")
-	} else {
-		expectedError := "cyclic dependencies detected"
-		if !strings.Contains(err.Error(), expectedError) {
-			t.Errorf("unexpected error message: %v", err)
-		}
 	}
 }

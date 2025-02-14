@@ -4,12 +4,12 @@ Copyright © 2025 Minh Nguyen minh160302@gmail.com
 package main
 
 import (
-	"cicd/gocc/cmd"
+	"cicd/pipeci/cmd"
 	"log"
 )
 
 func main() {
-	log.SetPrefix("GoCC: ")
+	log.SetPrefix("pipeci: ")
 	log.SetFlags(0)
 
 	err := cmd.Execute()
