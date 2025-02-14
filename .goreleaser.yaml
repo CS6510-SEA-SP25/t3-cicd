@@ -13,12 +13,6 @@ project_name: pipeci
 gomod:
   dir: CLI # Set the Go module directory
 
-before:
-  hooks:
-    # You may remove this if you don't use go modules.
-    - cd CLI && go mod tidy
-    # you may remove this if you don't need go generate
-    - cd CLI && make all
 
 builds:
   - dir: ./CLI
