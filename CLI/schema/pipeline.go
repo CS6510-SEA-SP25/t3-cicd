@@ -216,8 +216,8 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (YAMLFileLocation
 		return *pipeline.Jobs.Location, errors.New("syntax error: empty jobs")
 	}
 
+	// Check format
 	for _, job := range pipeline.Jobs.Value {
-		// Check format
 		// Name
 		if job.Name == nil {
 			return *job.Name.Location, errors.New("syntax error: missing job name")
@@ -267,7 +267,6 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (YAMLFileLocation
 			return *pipeline.Stages.Location, errors.New("syntax error: stage `" + stage + "` must have at least one job")
 		}
 
-		// check cyclic dependencies among jobs within a stage
 		pipeline.ExecOrder[stage] = make([][]string, 0)
 		indegrees := make(map[string]int)
 		graph := make(map[string][]string)
@@ -291,41 +290,10 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (YAMLFileLocation
 		// Execution order
 		var parallel [][]string
 
-		for len(indegrees) > 0 {
-			parallel = append(parallel, make([]string, 0))
-
-			for job, degree := range indegrees {
-				if degree == 0 {
-					// add job to execution order
-					parallel[len(parallel)-1] = append(parallel[len(parallel)-1], job)
-				}
-			}
-
-			if len(parallel[len(parallel)-1]) == 0 {
-				// find cycle
-				cycle := make([]string, 0)
-				for remainingJobName := range indegrees {
-					visited := make(map[string]bool)
-					if jobs[remainingJobName].checkCycle(visited, jobs, &cycle) {
-						break
-					}
-
-				}
-				if len(cycle) == 0 {
-					panic("cycle is not supposed to be empty")
-				}
-				cycleHead := cycle[0]
-				cycleStr := strings.Join(cycle, " -> ")
-				return *jobs[cycleHead].Name.Location, errors.New("syntax error: cyclic dependencies detected: " + cycleStr)
-			}
-
-			// update indegrees
-			for _, job := range parallel[len(parallel)-1] {
-				delete(indegrees, job)
-				for _, childJob := range graph[job] {
-					indegrees[childJob]--
-				}
-			}
+		// check cyclic dependencies among jobs within a stage
+		hasCycle, location, validateErr := detectCycle(&parallel, &indegrees, jobs, graph)
+		if hasCycle && validateErr != nil {
+			return location, validateErr
 		}
 
 		pipeline.ExecOrder[stage] = parallel
@@ -334,13 +302,50 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (YAMLFileLocation
 	return *pipeline.Version.Location, nil
 }
 
-// TODO: Refactor this code
-// func () getExecutionOrder() (int, int, error) {
+/*
+Detect cyclic dependencies in a stage.
+*/
+func detectCycle(parallel *[][]string, indegrees *map[string]int, jobs map[string]*JobConfiguration, graph map[string][]string) (bool, YAMLFileLocation, error) {
+	for len(*indegrees) > 0 {
+		*parallel = append(*parallel, make([]string, 0))
 
-// }
+		for job, degree := range *indegrees {
+			if degree == 0 {
+				// add job to execution order
+				(*parallel)[len(*parallel)-1] = append((*parallel)[len(*parallel)-1], job)
+			}
+		}
+
+		if len((*parallel)[len(*parallel)-1]) == 0 {
+			// find cycle
+			cycle := make([]string, 0)
+			for remainingJobName := range *indegrees {
+				visited := make(map[string]bool)
+				if jobs[remainingJobName].checkCycle(visited, jobs, &cycle) {
+					break
+				}
+			}
+			if len(cycle) == 0 {
+				panic("cycle is not supposed to be empty")
+			}
+			cycleHead := cycle[0]
+			cycleStr := strings.Join(cycle, " -> ")
+			return true, *jobs[cycleHead].Name.Location, errors.New("syntax error: cyclic dependencies detected: " + cycleStr)
+		}
+
+		// update indegrees
+		for _, job := range (*parallel)[len(*parallel)-1] {
+			delete(*indegrees, job)
+			for _, childJob := range graph[job] {
+				(*indegrees)[childJob]--
+			}
+		}
+	}
+	return false, YAMLFileLocation{}, nil
+}
 
 /*
-Trace the dependencies cycle.
+Trace the dependency cycle.
 */
 func (job *JobConfiguration) checkCycle(visited map[string]bool, jobs map[string]*JobConfiguration, cycle *[]string) bool {
 	if visited[job.Name.Value] {
