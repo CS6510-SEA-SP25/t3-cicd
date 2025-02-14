@@ -13,7 +13,6 @@ project_name: pipeci
 gomod:
   dir: CLI # Set the Go module directory
 
-
 builds:
   - dir: ./CLI
     main: ./main.go
@@ -64,22 +63,22 @@ release:
 
     Released by [GoReleaser](https://github.com/goreleaser/goreleaser).
 
-# brews:
-#   - name: pipeci
-#     commit_author:
-#       name: minh160302
-#       email: minh160302@gmail.com
-#     commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
-#     directory: Formula
-#     description: "CLI Program for CI/CD Pipeline execution."
-#     license: "Unlicense"
-#     install: |
-#       bin.install pipeci
-#     test: |
-#       system "#{bin}/pipeci --version"
-#     # Repository to push the generated files to.
-#     repository:
-#       owner: CS6510-SEA-SP25
-#       name: homebrew-pipeci
-#       branch: main
-#       token: "{{ .Env.GITHUB_TOKEN }}"
+brews:
+  - name: pipeci
+    commit_author:
+      name: minh160302
+      email: minh160302@gmail.com
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+    directory: Formula
+    description: "CLI Program for CI/CD Pipeline execution."
+    license: "Unlicense"
+    install: |
+      bin.install pipeci
+    test: |
+      system "#{bin}/pipeci --version"
+    # Repository to push the generated files to.
+    repository:
+      owner: CS6510-SEA-SP25
+      name: homebrew-pipeci
+      branch: main
+      token: "{{ .Env.GITHUB_TOKEN }}"

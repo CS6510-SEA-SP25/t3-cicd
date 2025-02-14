@@ -26,7 +26,6 @@ func testWrongConfigFile(t *testing.T, filename string, expectedError string) {
 		t.Fatalf("failed to change directory: %v", err)
 	}
 
-	
 	err = cmd.RootCmd.PersistentFlags().Set("filename", filename)
 	if err != nil {
 		t.Errorf("unexpected error message: %v", err)
