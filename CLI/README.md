@@ -68,3 +68,7 @@ Flags:
   -h, --help              help for pipeci
 
 ```
+
+## GoDoc
+
+`godoc -http=:6060` then open localhost:6060.

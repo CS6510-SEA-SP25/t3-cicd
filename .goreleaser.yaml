@@ -10,16 +10,12 @@ version: 2
 
 project_name: pipeci
 
-before:
-  hooks:
-    # You may remove this if you don't use go modules.
-    - cd CLI && go mod tidy
-    # you may remove this if you don't need go generate
-    - cd CLI && make all
+gomod:
+  dir: CLI # Set the Go module directory
 
 builds:
   - dir: ./CLI
-    main: ./pipeci
+    main: ./main.go
     binary: pipeci
     id:
       "pipeci"
@@ -66,3 +62,23 @@ release:
     ---
 
     Released by [GoReleaser](https://github.com/goreleaser/goreleaser).
+
+brews:
+  - name: pipeci
+    commit_author:
+      name: minh160302
+      email: minh160302@gmail.com
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+    directory: Formula
+    description: "CLI Program for CI/CD Pipeline execution."
+    license: "Unlicense"
+    install: |
+      bin.install pipeci
+    test: |
+      system "#{bin}/pipeci --version"
+    # Repository to push the generated files to.
+    repository:
+      owner: minh160302
+      name: homebrew-pipeci
+      branch: main
+      token: "{{ .Env.HOMEBREW_TOKEN }}"

@@ -33,6 +33,9 @@ go.work.sum
 # Executables
 pipeci
 
-
 # Added by goreleaser init:
 dist/
+scripts
+
+# GoDoc
+localhost:6060

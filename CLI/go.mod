@@ -14,4 +14,6 @@ require (
 
 replace cicd/pipeci/schema => ./schema
 
-replace cicd/cli/cmd => ./cmd
+replace cicd/pipeci/cmd => ./cmd
+
+// replace cicd/cli/cmd => ./cmd
