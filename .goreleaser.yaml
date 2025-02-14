@@ -81,4 +81,4 @@ brews:
       owner: minh160302
       name: homebrew-pipeci
       branch: main
-      token: "{{ .Env.GITHUB_TOKEN }}"
+      token: "{{ .Env.HOMEBREW_TOKEN }}"

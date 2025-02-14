@@ -41,10 +41,10 @@ jobs:
         run: |
           go build
           go install .
-      - name: Run GoReleaser
+      - name: Install GoReleaser
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.HOMEBREW_GITHUB_API_TOKEN }}
+          HOMEBREW_TOKEN: ${{ secrets.HOMEBREW_GITHUB_TOKEN }}
         run: |
           curl -sL https://git.io/goreleaser | bash
 
@@ -55,4 +55,5 @@ jobs:
           version: "~> v2"
           args: release --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.HOMEBREW_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TOKEN: ${{ secrets.HOMEBREW_GITHUB_TOKEN }}
