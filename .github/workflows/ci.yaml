@@ -86,7 +86,7 @@ jobs:
         with:
           version: v1.60
           working-directory: CLI
-          args: --config=.golangci.yaml
+          args: --config=.golangci.yaml --verbose
 
   godoc:
     needs: build
