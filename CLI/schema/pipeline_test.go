@@ -60,4 +60,6 @@ func TestInvalidConfigFile(t *testing.T) {
 	testWrongConfigFile(t, "./.pipelines/test/empty_stages.yaml", "missing key `stages`")
 	// Empty stages
 	testWrongConfigFile(t, "./.pipelines/test/stage_not_exist.yaml", "stage `not_exist` must be defined in stages")
+	// Empty stages
+	testWrongConfigFile(t, "./.pipelines/test/number_name.yaml", "job name must be a non-empty string")
 }

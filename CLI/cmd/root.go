@@ -19,9 +19,10 @@ import (
 Command line variables
 */
 var (
-	filename string
-	check    bool
-	pipeline schema.PipelineConfiguration
+	filename   string
+	check      bool
+	showDryRun bool
+	pipeline   schema.PipelineConfiguration
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -50,6 +51,7 @@ var RootCmd = &cobra.Command{
 			return err
 		}
 
+		err = HandleDryRunFlag()
 		return nil
 	},
 }
@@ -64,14 +66,19 @@ func isGitRoot() error {
 	return err
 }
 
+// Check YAML file
 func isYAMLFile(filename string) bool {
 	ext := filepath.Ext(filename)
 	return ext == ".yaml" || ext == ".yml"
 }
 
-/*
-Flag handlers
-*/
+// Check file exists
+func doesfileExist(filename string) bool {
+	_, err := os.Stat(filename)
+	return !os.IsNotExist(err)
+}
+
+/* Flag handlers */
 // --filename | -f
 func HandleFilenameFlag() error {
 	// Default filename if not provided
@@ -82,24 +89,29 @@ func HandleFilenameFlag() error {
 		log.Printf("Using input configuration file at %v\n", filename)
 	}
 
+	// Check file exists
+	if !doesfileExist(filename) {
+		return errors.New("no such file or directory")
+	}
+
 	// Check file extension
 	if !isYAMLFile(filename) {
 		return errors.New("configuration file must be a YAML file")
 	}
 
-	// Parse configuration file
-	pConfig, err := schema.ParseYAMLFile(filename)
-	if err != nil {
-		return err
-	}
-	pipeline = *pConfig
 	return nil
 }
 
+/* Validate configuration then exit. */
 // --check | -c
-// Validate configuration then exit.
 func HandleCheckFlag() error {
 	if check {
+		// Parse configuration file
+		pipeline, location, err := schema.ParseYAMLFile(filename)
+		if err != nil {
+			return fmt.Errorf("%s:%d:%d: %s", filename, location.Line, location.Column, err.Error())
+		}
+
 		// Validate configuration
 		location, validateErr := pipeline.ValidateConfiguration()
 		if validateErr != nil {
@@ -108,8 +120,17 @@ func HandleCheckFlag() error {
 		} else {
 			log.Print("Pipeline configuration is valid.")
 		}
+	}
+	return nil
+}
 
-		log.Printf("Execution Order: %#v\n", pipeline.ExecOrder)
+/* Show the jobs execution order. */
+// --dry-run
+func HandleDryRunFlag() error {
+	if showDryRun {
+		if pipeline.ExecOrder == nil {
+			panic("empty excution order when pipeline configuration is valid")
+		}
 	}
 	return nil
 }
@@ -121,6 +142,9 @@ func init() {
 
 	// --check | -c
 	RootCmd.PersistentFlags().BoolVarP(&check, "check", "c", false, "Validate the pipeline configuration file.")
+
+	// --dry-run
+	RootCmd.PersistentFlags().BoolVar(&showDryRun, "dry-run", false, "Show the jobs execution order.")
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
