@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -ex
+set -e
 
 # Clean test cache
 go clean -testcache
@@ -14,7 +14,7 @@ go tool cover -html=./cover.out -o reports/test-coverage.html
 
 
 # Set the minimum acceptable coverage percentage
-MIN_COVERAGE=10
+MIN_COVERAGE=80
 
 # Extract coverage percentage
 coverage=$(go tool cover -func=./cover.out | tail -n 1 | awk '{print $3}' | tr -d '%')

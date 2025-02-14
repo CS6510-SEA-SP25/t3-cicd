@@ -44,6 +44,7 @@ jobs:
         run: chmod +x script_coverage.sh
       - name: Run
         run: ./script_coverage.sh > ./reports/test-summary.txt
+      ####
       - name: Upload Go test results
         uses: actions/upload-artifact@v4
         with:
