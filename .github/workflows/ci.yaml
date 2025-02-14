@@ -77,47 +77,41 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-      - name: Install modules
-        run: |
-          go mod tidy
-          go mod download
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: v1.60
-          working-directory: CLI
-          args: --config=.golangci.yaml --verbose
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - name: Run golangci-lint
+        run: golangci-lint run ./...
 
-  godoc:
-    needs: build
-    name: Generate GoDoc
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-      - name: Install godoc
-        run: |
-          go mod tidy
-          go install golang.org/x/tools/cmd/godoc@latest
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
-          go list ./...
-      - name: Generate documentation
-        run: |
-          mkdir -p ./docs
-          godoc -http=:6060 &
-          sleep 5  # Wait for godoc to start
-          wget -r -np -N -E -p -k http://localhost:6060/pkg/ -P ./docs/
-      - name: Upload documentation
-        uses: actions/upload-artifact@v4
-        with:
-          name: go-docs
-          path: ./docs
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
+  # godoc:
+  #   needs: build
+  #   name: Generate GoDoc
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #     - name: Setup Go
+  #       uses: actions/setup-go@v5
+  #       with:
+  #         go-version: ${{ env.GO_VERSION }}
+  #     - name: Install godoc
+  #       run: |
+  #         go mod tidy
+  #         go install golang.org/x/tools/cmd/godoc@latest
+  #         echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+  #         go list ./...
+  #     - name: Generate documentation
+  #       run: |
+  #         mkdir -p ./docs
+  #         godoc -http=:6060 &
+  #         sleep 5  # Wait for godoc to start
+  #         wget -r -np -N -E -p -k http://localhost:6060/pkg/ -P ./docs/
+  #     - name: Upload documentation
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: go-docs
+  #         path: ./docs
+  #     - name: Deploy to GitHub Pages
+  #       uses: peaceiris/actions-gh-pages@v3
+  #       with:
+  #         github_token: ${{ secrets.GITHUB_TOKEN }}
+  #         publish_dir: ./docs
