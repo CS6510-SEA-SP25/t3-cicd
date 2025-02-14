@@ -309,7 +309,6 @@ func (pipeline *PipelineConfiguration) ValidateConfiguration() (YAMLFileLocation
 					if jobs[remainingJobName].checkCycle(visited, jobs, &cycle) {
 						break
 					}
-
 				}
 				if len(cycle) == 0 {
 					panic("cycle is not supposed to be empty")
