@@ -53,7 +53,7 @@ type PipelineConfiguration struct {
 		e.g. "build" -> [[job1, job2], [job3], [job4]]
 	*/
 	StageOrder []string
-	ExecOrder map[string][][]string
+	ExecOrder  map[string][][]string
 }
 
 // Check if a YAML variable is string
