@@ -211,7 +211,9 @@ docs:
 			- ./gradlew javadoc`
 
 		cleanedText := strings.ReplaceAll(loggedOutput, "	", " ")
+		cleanedText = strings.ReplaceAll(cleanedText, "\n", " ")
 		cleanedExpected := strings.ReplaceAll(expected, "\t", " ")
+		cleanedExpected = strings.ReplaceAll(cleanedExpected, "\n", " ")
 
 		if !strings.Contains(cleanedText, cleanedExpected) {
 			t.Errorf("expected %q but got %q", cleanedExpected, cleanedText)

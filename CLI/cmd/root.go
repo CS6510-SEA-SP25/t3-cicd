@@ -151,17 +151,31 @@ func HandleDryRunFlag() error {
 					for _, jobName := range level {
 						job := pipeline.Stages.Value[stageName].Value[jobName]
 						var jobOrder []string
+						// name
 						jobOrder = append(jobOrder, "\t"+jobName+":")
+
+						// image
 						jobOrder = append(jobOrder, "\t\timage: "+job.Image.Value)
 
+						// script
 						var jobScript []string
 						jobScript = append(jobScript, "\t\tscript:")
 						for _, script := range job.Script.Value {
 							jobScript = append(jobScript, "\t\t\t- "+script)
 						}
-
 						jobOrder = append(jobOrder, strings.Join(jobScript, "\n"))
 						stageOrder = append(stageOrder, strings.Join(jobOrder, "\n"))
+
+						// needs
+						if job.Dependencies != nil && len(job.Dependencies.Value) > 0 {
+							var jobDependencies []string
+							jobDependencies = append(jobDependencies, "\t\tneeds:")
+							for _, dep := range job.Dependencies.Value {
+								jobDependencies = append(jobDependencies, "\t\t\t- "+dep)
+							}
+							jobOrder = append(jobOrder, strings.Join(jobDependencies, "\n"))
+							stageOrder = append(stageOrder, strings.Join(jobOrder, "\n"))
+						}
 					}
 				}
 				orders = append(orders, strings.Join(stageOrder, "\n"))
