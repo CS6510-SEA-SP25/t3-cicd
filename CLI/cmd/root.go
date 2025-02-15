@@ -11,7 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"cicd/pipeci/schema"
+	containers "cicd/pipeci/containers/docker"
+	schema "cicd/pipeci/schema"
 
 	"github.com/spf13/cobra"
 )
@@ -26,6 +27,41 @@ var (
 	pipeline   schema.PipelineConfiguration
 )
 
+func mandatoryProcess(cmd *cobra.Command) error {
+	// validate
+	err := isGitRoot()
+	if err != nil {
+		return errors.New("current directory must be root of a Git repository")
+	}
+
+	// FLAGS PROCESSING
+	// Validate configuration during `run`
+	if cmd.Use == "run" {
+		check = true
+	}
+	// Validate configuration file during dry-run
+	if showDryRun {
+		check = true
+	}
+
+	// flags
+	err = HandleFilenameFlag()
+	if err != nil {
+		return err
+	}
+
+	err = HandleCheckFlag()
+	if err != nil {
+		return err
+	}
+
+	err = HandleDryRunFlag()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // rootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:           "pipeci",
@@ -35,33 +71,7 @@ var RootCmd = &cobra.Command{
 	SilenceErrors: true,
 	// pipeci [flags]
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// validate
-		err := isGitRoot()
-		if err != nil {
-			return errors.New("current directory must be root of a Git repository")
-		}
-
-		// FLAGS PROCESSING
-		if showDryRun {
-			check = true
-		}
-
-		// flags
-		err = HandleFilenameFlag()
-		if err != nil {
-			return err
-		}
-
-		err = HandleCheckFlag()
-		if err != nil {
-			return err
-		}
-
-		err = HandleDryRunFlag()
-		if err != nil {
-			return err
-		}
-		return nil
+		return mandatoryProcess(cmd)
 	},
 }
 
@@ -164,7 +174,6 @@ func HandleDryRunFlag() error {
 							jobScript = append(jobScript, "\t\t\t- "+script)
 						}
 						jobOrder = append(jobOrder, strings.Join(jobScript, "\n"))
-						stageOrder = append(stageOrder, strings.Join(jobOrder, "\n"))
 
 						// needs
 						if job.Dependencies != nil && len(job.Dependencies.Value) > 0 {
@@ -174,8 +183,9 @@ func HandleDryRunFlag() error {
 								jobDependencies = append(jobDependencies, "\t\t\t- "+dep)
 							}
 							jobOrder = append(jobOrder, strings.Join(jobDependencies, "\n"))
-							stageOrder = append(stageOrder, strings.Join(jobOrder, "\n"))
 						}
+
+						stageOrder = append(stageOrder, strings.Join(jobOrder, "\n"))
 					}
 				}
 				orders = append(orders, strings.Join(stageOrder, "\n"))
@@ -184,6 +194,25 @@ func HandleDryRunFlag() error {
 		}
 	}
 	return nil
+}
+
+// Sub-command: pipeci run
+var RunCmd = &cobra.Command{
+	Use:           "run",
+	Short:         "usage: pipeci run",
+	Long:          "Execute the pipeline on local machine when pipeline configuration is valid",
+	SilenceUsage:  true,
+	SilenceErrors: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		err := mandatoryProcess(cmd)
+
+		if err != nil {
+			return err
+		}
+
+		err = containers.Execute(pipeline)
+		return err
+	},
 }
 
 // Init function
@@ -196,6 +225,9 @@ func init() {
 
 	// --dry-run
 	RootCmd.PersistentFlags().BoolVar(&showDryRun, "dry-run", false, "Show the jobs execution order.")
+
+	// run
+	RootCmd.AddCommand(RunCmd)
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
