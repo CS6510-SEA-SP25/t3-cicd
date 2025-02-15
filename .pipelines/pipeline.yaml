@@ -48,7 +48,6 @@ jobs:
   - name: generate-docs
     stage: docs
     image: maven:3.8.6
-    imge: maven:3.8.6
     script:
       - ps -u
       - mvn javadoc:javadoc
