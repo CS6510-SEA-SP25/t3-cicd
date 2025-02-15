@@ -1,7 +1,9 @@
 package cmd_test
 
 import (
+	"bytes"
 	"cicd/pipeci/cmd"
+	"log"
 	"os"
 	"strings"
 	"testing"
@@ -146,5 +148,73 @@ func TestCheckFlag(t *testing.T) {
 	err = cmd.Execute()
 	if err != nil {
 		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestDryRun(t *testing.T) {
+	// Capture log output
+	var buf bytes.Buffer
+	log.SetOutput(&buf)      // Redirect log output to buffer
+	defer log.SetOutput(nil) // Reset after test
+
+	// Store the original directory to restore later
+	originalDir, _ := os.Getwd()
+	// Restore original directory after test
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Fatalf("Failed to return to original directory: %v\n", err)
+		}
+	}()
+
+	// Change to a wrong directory (assume it's root for test purposes)
+	err := os.Chdir("../../")
+	if err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
+
+	err = cmd.RootCmd.PersistentFlags().Set("filename", "./.pipelines/test/dry_run_success.yaml")
+	if err != nil {
+		t.Errorf("unexpected error message: %v", err)
+	}
+
+	err = cmd.RootCmd.PersistentFlags().Set("dry-run", "true")
+	if err != nil {
+		t.Errorf("unexpected error message: %v", err)
+	}
+
+	err = cmd.Execute()
+	if err != nil {
+		t.Errorf("unexpected error message: %v", err)
+	} else {
+		// Get log output as a string
+		loggedOutput := buf.String()
+
+		// Assert output
+		expected := `build:
+	compile:
+		image: gradle:8.12-jdk21
+		script:
+			- ./gradlew classes
+test:
+	unittests:
+		image: gradle:8.12-jdk21
+		script:
+			- ./gradlew test
+	reports:
+		image: gradle:8.12-jdk21
+		script:
+			- ./gradlew check
+docs:
+	javadoc:
+		image: gradle:8.12-jdk21
+		script:
+			- ./gradlew javadoc`
+
+		cleanedText := strings.ReplaceAll(loggedOutput, "	", " ")
+		cleanedExpected := strings.ReplaceAll(expected, "\t", " ")
+
+		if !strings.Contains(cleanedText, cleanedExpected) {
+			t.Errorf("expected %q but got %q", cleanedExpected, cleanedText)
+		}
 	}
 }

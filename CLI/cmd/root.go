@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"cicd/pipeci/schema"
 
@@ -40,6 +41,11 @@ var RootCmd = &cobra.Command{
 			return errors.New("current directory must be root of a Git repository")
 		}
 
+		// FLAGS PROCESSING
+		if showDryRun {
+			check = true
+		}
+
 		// flags
 		err = HandleFilenameFlag()
 		if err != nil {
@@ -52,6 +58,9 @@ var RootCmd = &cobra.Command{
 		}
 
 		err = HandleDryRunFlag()
+		if err != nil {
+			return err
+		}
 		return nil
 	},
 }
@@ -107,10 +116,11 @@ func HandleFilenameFlag() error {
 func HandleCheckFlag() error {
 	if check {
 		// Parse configuration file
-		pipeline, location, err := schema.ParseYAMLFile(filename)
+		pConfig, location, err := schema.ParseYAMLFile(filename)
 		if err != nil {
 			return fmt.Errorf("%s:%d:%d: %s", filename, location.Line, location.Column, err.Error())
 		}
+		pipeline = *pConfig
 
 		// Validate configuration
 		location, validateErr := pipeline.ValidateConfiguration()
@@ -130,6 +140,33 @@ func HandleDryRunFlag() error {
 	if showDryRun {
 		if pipeline.ExecOrder == nil {
 			panic("empty excution order when pipeline configuration is valid")
+		} else {
+			var orders []string
+			for _, stageName := range pipeline.StageOrder {
+				jobs := pipeline.ExecOrder[stageName]
+				var stageOrder []string
+				stageOrder = append(stageOrder, stageName+":")
+
+				for _, level := range jobs {
+					for _, jobName := range level {
+						job := pipeline.Stages.Value[stageName].Value[jobName]
+						var jobOrder []string
+						jobOrder = append(jobOrder, "\t"+jobName+":")
+						jobOrder = append(jobOrder, "\t\timage: "+job.Image.Value)
+
+						var jobScript []string
+						jobScript = append(jobScript, "\t\tscript:")
+						for _, script := range job.Script.Value {
+							jobScript = append(jobScript, "\t\t\t- "+script)
+						}
+
+						jobOrder = append(jobOrder, strings.Join(jobScript, "\n"))
+						stageOrder = append(stageOrder, strings.Join(jobOrder, "\n"))
+					}
+				}
+				orders = append(orders, strings.Join(stageOrder, "\n"))
+			}
+			log.Println(strings.Join(orders, "\n"))
 		}
 	}
 	return nil

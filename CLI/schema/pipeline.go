@@ -52,6 +52,7 @@ type PipelineConfiguration struct {
 		Jobs execution order for each stage (topological)
 		e.g. "build" -> [[job1, job2], [job3], [job4]]
 	*/
+	StageOrder []string
 	ExecOrder map[string][][]string
 }
 
@@ -110,6 +111,7 @@ func parsePipelineConfig(root *yaml.Node, config *PipelineConfiguration) (YAMLFi
 						Value:    make(map[string]*JobConfiguration),
 						Location: &YAMLFileLocation{Line: item.Line, Column: item.Column},
 					}
+					config.StageOrder = append(config.StageOrder, item.Value)
 				}
 			}
 		case "jobs":
