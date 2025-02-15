@@ -1,16 +1,11 @@
 test:
-	@echo TEST
-	go test cicd/pipeci/cmd
-	@echo "--------------------------------------------"
-
-coverage:
-	@echo CODE COVERAGE
-	./coverage.sh
+	@echo TEST AND COVERAGE
+	./script_coverage.sh
 	@echo "--------------------------------------------"
 
 linter:
 	@echo STATIC CODE ANALYSIS
-	golangci-lint run
+	golangci-lint -c .golangci.yaml run
 	@echo "--------------------------------------------"
 
 build:
@@ -24,4 +19,4 @@ install:
 	@echo "--------------------------------------------"
 
 
-all: test coverage linter build install
+all: test linter build install

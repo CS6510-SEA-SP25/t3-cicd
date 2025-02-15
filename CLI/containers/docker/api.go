@@ -1,0 +1,167 @@
+package containers
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"log"
+	"os"
+
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/client"
+
+	// "github.com/docker/docker/pkg/stdcopy"
+
+	schema "cicd/pipeci/schema"
+)
+
+type DockerClient struct {
+	cli *client.Client  // Docker API Client
+	ctx context.Context // Context
+}
+
+/* Initialize Docker client */
+func InitDockerClient() (*DockerClient, error) {
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, err
+	}
+	return &DockerClient{cli: cli, ctx: ctx}, nil
+}
+
+/* Close the transport used by the client */
+func (dc *DockerClient) Close() {
+	dc.cli.Close()
+}
+
+/* Pull image from Docker hub */
+func (dc *DockerClient) PullImage(imageName string) error {
+	log.Printf("Installing image: %#v\n", imageName)
+	reader, err := dc.cli.ImagePull(dc.ctx, imageName, image.PullOptions{})
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+	// Copy logs to client stdout
+	_, err = io.ReadAll(reader)
+	return err
+}
+
+/* Create Docker container from input image and commands */
+func (dc *DockerClient) CreateContainer(imageName string, commands []string, hostWorkspaceDir string, containerWorkspaceDir string) (string, error) {
+	// Combine multiple commands into a single shell command
+	joinedCmd := []string{"sh", "-c", ""}
+	for _, cmd := range commands {
+		joinedCmd[2] += cmd + " && "
+	}
+	joinedCmd[2] = joinedCmd[2][:len(joinedCmd[2])-4]
+
+	// Define the bind mount for the workspace
+	mounts := []mount.Mount{
+		{
+			Type:   mount.TypeBind,
+			Source: hostWorkspaceDir,      // Host directory
+			Target: containerWorkspaceDir, // Container directory
+		},
+	}
+
+	resp, err := dc.cli.ContainerCreate(dc.ctx, &container.Config{
+		Image:      imageName,
+		Cmd:        joinedCmd,
+		WorkingDir: containerWorkspaceDir,
+	}, &container.HostConfig{
+		Mounts: mounts,
+	}, nil, nil, "")
+	if err != nil {
+		return "", err
+	}
+	return resp.ID, nil
+}
+
+/* Start container */
+func (dc *DockerClient) StartContainer(containerID string) error {
+	return dc.cli.ContainerStart(dc.ctx, containerID, container.StartOptions{})
+}
+
+/* Wait container */
+func (dc *DockerClient) WaitContainer(containerID string) error {
+	statusCh, errCh := dc.cli.ContainerWait(dc.ctx, containerID, container.WaitConditionNotRunning)
+	select {
+	case err := <-errCh:
+		return err
+	case <-statusCh:
+		return nil
+	}
+}
+
+/* Retrieve container logs */
+// func (dc *DockerClient) GetContainerLogs(containerID string) error {
+// 	out, err := dc.cli.ContainerLogs(dc.ctx, containerID, container.LogsOptions{ShowStdout: true})
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer out.Close()
+// 	_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+// 	return err
+// }
+
+// Actions on Docker
+func initContainer(job schema.JobConfiguration) error {
+	log.Printf("Running stage %#v, job: %#v\n", job.Stage.Value, job.Name.Value)
+	dc, err := InitDockerClient()
+	if err != nil {
+		return err
+	}
+	defer dc.Close()
+
+	if err := dc.PullImage(job.Image.Value); err != nil {
+		return err
+	}
+
+	hostWorkspaceDir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	containerWorkspaceDir := "/workspace"
+	containerID, err := dc.CreateContainer(job.Image.Value, job.Script.Value, hostWorkspaceDir, containerWorkspaceDir)
+	if err != nil {
+		return err
+	}
+	log.Printf("Container ID: %#v\n", containerID)
+
+	if err := dc.StartContainer(containerID); err != nil {
+		return err
+	}
+
+	if err := dc.WaitContainer(containerID); err != nil {
+		return err
+	}
+
+	// if err := dc.GetContainerLogs(containerID); err != nil {
+	// 	return err
+	// }
+	log.Print("Container execution done.")
+	return nil
+}
+
+/* Execute jobs in Docker containers  */
+func Execute(pipeline schema.PipelineConfiguration) error {
+	execOrder := pipeline.ExecOrder
+	stageOrder := pipeline.StageOrder
+	for _, stage := range stageOrder {
+		levels := execOrder[stage]
+		for _, level := range levels {
+			for _, name := range level {
+				var job schema.JobConfiguration = *pipeline.Stages.Value[stage].Value[name]
+				err := initContainer(job)
+				if err != nil {
+					return fmt.Errorf("terminating pipeline execution, caused by failure in running job %#v\tCaused by: \n%#v", name, err.Error())
+				}
+			}
+		}
+	}
+	return nil
+}

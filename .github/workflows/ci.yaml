@@ -36,14 +36,12 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-      - name: Run test and coverage script
-        run: |
-          go mod tidy
-          echo "Tidy done"
       - name: Generate executable
         run: chmod +x script_coverage.sh
       - name: Run
-        run: ./script_coverage.sh > ./reports/test-summary.txt
+        run: |
+          go mod tidy
+          ./script_coverage.sh > ./reports/test-summary.txt
       ####
       - name: Upload Go test results
         uses: actions/upload-artifact@v4

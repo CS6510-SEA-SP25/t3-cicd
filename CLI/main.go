@@ -4,7 +4,7 @@ Copyright © 2025 Minh Nguyen minh160302@gmail.com
 package main
 
 import (
-	"cicd/pipeci/cmd"
+	cmd "cicd/pipeci/cmd"
 	"log"
 )
 
