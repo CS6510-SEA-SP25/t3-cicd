@@ -78,7 +78,7 @@ brews:
       system "#{bin}/pipeci --version"
     # Repository to push the generated files to.
     repository:
-      owner: minh160302
+      owner: CS6510-SEA-SP25
       name: homebrew-pipeci
       branch: main
       token: "{{ .Env.HOMEBREW_TOKEN }}"
