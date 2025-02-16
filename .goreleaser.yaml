@@ -73,7 +73,7 @@ brews:
     description: "CLI Program for CI/CD Pipeline execution."
     license: "Unlicense"
     install: |
-      bin.install pipeci
+      bin.install "pipeci"
     test: |
       system "#{bin}/pipeci --version"
     # Repository to push the generated files to.

@@ -4,21 +4,17 @@ This document contains the tech stack is used for the CI/CD system. Trade-offs f
 
 | Component          | Technology Choices |
 | ------------------ | ------------------ |
-| **API**            | Spring Boot (Java) |
+| **API**            | Go                 |
 | **Database**       | MySQL              |
 | **Job Execution**  | Docker             |
 | **Cloud Services** | AWS                |
-| **CLI**            | Python             |
+| **CLI**            | Go Cobra           |
 
 We have considerations for technology choices:
 
-#### API: We consider Java Spring Boot and Node.js.
+#### API: Golang
 
-Concurrency is one important issue for the CI/CD system, as the system should be able to handle multiple jobs at the same time.
-For Java, each request gets its own thread, while JS requests go into the same thread and are handled with event loop.
-At scale, Java can use more threads, thus can handle huge work load and multiple long-running tasks at once.
-JS can also handle CPU heavy tasks like compile code and running tests, but with [worker threads](https://nodejs.org/api/worker_threads.html),
-which incur additional learning curve and extra setup.
+Concurrency is one important issue for the CI/CD system, as the system should be able to handle multiple jobs at the same time. Goroutines are lightweight threads of execution that make it effortless to write concurrent code, while channels provide a safe way for these goroutines to communicate and coordinate.
 
 #### Database: PostgreSQL vs MySQL
 
@@ -35,10 +31,6 @@ We choose Docker for its popularity and community support.
 
 The team is familiar with AWS services, which shorten the learning curve.
 
-#### CLI application: Python
+#### CLI application: Go Cobra
 
-We choose Python for the ease of development. Ideally, Go would be a great idea due to its performance and startup time, and Go doesn't require runtime installed like Python and Java.
-
-Java is too verbose, so we cross it out.
-
-Using Go would incur learning curve. Hence, we choose Python for now.
+Go compiles to executables, which is perfect for creating CLI application. We can also release open-source package manager like HomeBrew with GoReleaser with basic setup.
