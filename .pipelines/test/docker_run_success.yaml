@@ -2,7 +2,7 @@ version: v0
 
 # Pipeline info
 pipeline:
-  name: pipeline-name
+  name: test_pipeline
 
 # List of stages - show order of execution
 stages:

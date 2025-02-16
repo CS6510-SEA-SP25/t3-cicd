@@ -51,7 +51,7 @@ func (dc *DockerClient) PullImage(imageName string) error {
 }
 
 /* Create Docker container from input image and commands */
-func (dc *DockerClient) CreateContainer(imageName string, commands []string, hostWorkspaceDir string, containerWorkspaceDir string) (string, error) {
+func (dc *DockerClient) CreateContainer(containerName string, imageName string, commands []string, hostWorkspaceDir string, containerWorkspaceDir string) (string, error) {
 	// Combine multiple commands into a single shell command
 	joinedCmd := []string{"sh", "-c", ""}
 	for _, cmd := range commands {
@@ -78,7 +78,23 @@ func (dc *DockerClient) CreateContainer(imageName string, commands []string, hos
 	if err != nil {
 		return "", err
 	}
+
+	// Rename the container with the given prefix
+	newName := containerName + "-" + resp.ID
+	err = dc.cli.ContainerRename(dc.ctx, resp.ID, newName)
+	if err != nil {
+		return "", err
+	}
 	return resp.ID, nil
+}
+
+// DeleteContainer deletes a Docker container by its ID
+func (dc *DockerClient) DeleteContainer(containerID string) error {
+	options := container.RemoveOptions{
+		Force: true, // Force removal if the container is running
+	}
+	err := dc.cli.ContainerRemove(dc.ctx, containerID, options)
+	return err
 }
 
 /* Start container */
@@ -109,7 +125,7 @@ func (dc *DockerClient) WaitContainer(containerID string) error {
 // }
 
 // Actions on Docker
-func initContainer(job schema.JobConfiguration) error {
+func initContainer(pipelineName string, job schema.JobConfiguration) error {
 	log.Printf("Running stage %#v, job: %#v\n", job.Stage.Value, job.Name.Value)
 	dc, err := InitDockerClient()
 	if err != nil {
@@ -126,7 +142,8 @@ func initContainer(job schema.JobConfiguration) error {
 		return err
 	}
 	containerWorkspaceDir := "/workspace"
-	containerID, err := dc.CreateContainer(job.Image.Value, job.Script.Value, hostWorkspaceDir, containerWorkspaceDir)
+	containerName := fmt.Sprintf("p_%v.s_%v.j_%v", pipelineName, job.Stage.Value, job.Name.Value)
+	containerID, err := dc.CreateContainer(containerName, job.Image.Value, job.Script.Value, hostWorkspaceDir, containerWorkspaceDir)
 	if err != nil {
 		return err
 	}
@@ -156,7 +173,7 @@ func Execute(pipeline schema.PipelineConfiguration) error {
 		for _, level := range levels {
 			for _, name := range level {
 				var job schema.JobConfiguration = *pipeline.Stages.Value[stage].Value[name]
-				err := initContainer(job)
+				err := initContainer(pipeline.Pipeline.Value.Name.Value, job)
 				if err != nil {
 					return fmt.Errorf("terminating pipeline execution, caused by failure in running job %#v\tCaused by: \n%#v", name, err.Error())
 				}
