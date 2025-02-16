@@ -164,9 +164,9 @@ func TestExecute(t *testing.T) {
 						"compile": {
 							Name:  &schema.ConfigurationNode[string]{Value: "compile"},
 							Stage: &schema.ConfigurationNode[string]{Value: "build"},
-							Image: &schema.ConfigurationNode[string]{Value: "maven:3.8.6"},
+							Image: &schema.ConfigurationNode[string]{Value: "maven"},
 							Script: &schema.ConfigurationNode[[]string]{
-								Value: []string{"ps -u", "mvn -v"},
+								Value: []string{"ls -la", "mvn -v"},
 							},
 						},
 					},
@@ -207,7 +207,7 @@ func TestExecuteFailed(t *testing.T) {
 							Stage: &schema.ConfigurationNode[string]{Value: "build"},
 							Image: &schema.ConfigurationNode[string]{Value: "mavennnnn"},
 							Script: &schema.ConfigurationNode[[]string]{
-								Value: []string{"ps -u", "mvn -v"},
+								Value: []string{"ls -la", "mvn -v"},
 							},
 						},
 					},

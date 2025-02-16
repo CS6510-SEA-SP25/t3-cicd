@@ -12,7 +12,7 @@ jobs:
   # build
   - name: compile
     stage: build
-    image: maven
+    image: maven_not_exist
     script:
       - ls -la
       - mvn -v
