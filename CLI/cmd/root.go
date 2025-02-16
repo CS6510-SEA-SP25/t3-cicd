@@ -27,6 +27,7 @@ var (
 	pipeline   schema.PipelineConfiguration
 )
 
+/* Base handler for all commands under root */
 func mandatoryProcess(cmd *cobra.Command) error {
 	// validate
 	err := isGitRoot()

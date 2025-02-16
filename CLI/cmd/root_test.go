@@ -3,11 +3,12 @@ package cmd_test
 import (
 	"bytes"
 	"cicd/pipeci/cmd"
-	"github.com/stretchr/testify/assert"
 	"log"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 /*
@@ -188,45 +189,6 @@ func TestDryRunOne(t *testing.T) {
 
 	err = cmd.Execute()
 	assert.NoError(t, err)
-	// 	if err != nil {
-	// 		t.Errorf("unexpected error message: %v", err)
-	// 	} else {
-	// 		// Get log output as a string
-	// 		loggedOutput := buf.String()
-
-	// 		// Assert output
-	// 		expected := `build:
-	// 	compile:
-	// 		image: gradle:8.12-jdk21
-	// 		script:
-	// 			- ./gradlew classes
-	// test:
-	// 	unittests:
-	// 		image: gradle:8.12-jdk21
-	// 		script:
-	// 			- ./gradlew test
-	// 	reports:
-	// 		image: gradle:8.12-jdk21
-	// 		script:
-	// 			- ./gradlew check
-	// docs:
-	// 	javadoc:
-	// 		image: gradle:8.12-jdk21
-	// 		script:
-	// 			- ./gradlew javadoc`
-
-	// 		// cleanedText := strings.ReplaceAll(loggedOutput, "	", " ")
-	// 		// cleanedText = strings.ReplaceAll(cleanedText, "\n", " ")
-	// 		// cleanedText = strings.ReplaceAll(cleanedText, " ", "")
-	// 		// cleanedExpected := strings.ReplaceAll(expected, "\t", " ")
-	// 		// cleanedExpected = strings.ReplaceAll(cleanedExpected, "\n", " ")
-	// 		// cleanedExpected = strings.ReplaceAll(cleanedExpected, " ", "")
-
-	// 		// if !strings.Contains(cleanedText, cleanedExpected) {
-	// 		// 	t.Errorf("expected %q but got %q", cleanedExpected, cleanedText)
-	// 		// }
-
-	// }
 }
 
 /*
@@ -265,59 +227,11 @@ func TestDryRunTwo(t *testing.T) {
 
 	err = cmd.Execute()
 	assert.NoError(t, err)
-	// 	if err != nil {
-	// 		t.Errorf("unexpected error message: %v", err)
-	// 	} else {
-	// 		// Get log output as a string
-	// 		loggedOutput := buf.String()
-
-	// 		// Assert output
-	// 		expected := `build:
-	// 	compile:
-	// 		image: maven:3.8.6
-	// 		script:
-	//     		- mvn clean install
-	// test:
-	// 	run-test:
-	// 		image: maven:3.8.6
-	// 		script:
-	// 			- mvn test
-	// 	checkstyle:
-	// 		image: maven:3.8.6
-	// 		script:
-	// 			- mvn checkstyle:check
-	// 			- mvn checkstyle:checkstyle
-	// 		needs:
-	// 			- run-test
-	// 	check-coverage:
-	// 		image: maven:3.8.6
-	// 		script:
-	// 			- mvn verify
-	// 			- mvn jacoco:report
-	// 		needs:
-	// 			- checkstyle
-	// docs:
-	// 	generate-docs:
-	// 		image: maven:3.8.6
-	// 		script:
-	// 			- ps -u
-	// 			- mvn javadoc:javadoc`
-
-	// 		cleanedText := strings.ReplaceAll(loggedOutput, "	", " ")
-	// 		cleanedText = strings.ReplaceAll(cleanedText, "\n", " ")
-	// 		cleanedText = strings.ReplaceAll(cleanedText, " ", "")
-	// 		cleanedExpected := strings.ReplaceAll(expected, "\t", " ")
-	// 		cleanedExpected = strings.ReplaceAll(cleanedExpected, "\n", " ")
-	// 		cleanedExpected = strings.ReplaceAll(cleanedExpected, " ", "")
-
-	//			if !strings.Contains(cleanedText, cleanedExpected) {
-	//				t.Errorf("expected %q but got %q", cleanedExpected, cleanedText)
-	//			}
-	//	}
 }
 
 /*
 Test `run` subcommand
+TODO: In later sprint, develop a background job to clean up leftover testing/trash containers
 */
 func TestRun(t *testing.T) {
 	// Capture log output
@@ -340,12 +254,9 @@ func TestRun(t *testing.T) {
 		t.Fatalf("failed to change directory: %v", err)
 	}
 
-	cmd.RunCmd.PersistentFlags().Set("filename", "./.pipelines/test/dry_run_success.yaml")
-	if err != nil {
-		t.Errorf("unexpected error message: %v", err)
-	}
+	cmd.RootCmd.SetArgs([]string{"run", "-f", ".pipelines/test/docker_run_success.yaml"})
 
-	err = cmd.RunCmd.RunE(cmd.RootCmd, []string{})
+	err = cmd.RootCmd.Execute()
 	if err != nil {
 		t.Errorf("unexpected error message: %v", err)
 	}

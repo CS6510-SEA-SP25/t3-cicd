@@ -2,7 +2,7 @@ version: v0
 
 # Pipeline info
 pipeline:
-  name: pipeline-name
+  name: test_pipeline
 
 # List of stages - show order of execution
 stages:
@@ -12,7 +12,7 @@ jobs:
   # build
   - name: compile
     stage: build
-    image: maven:3.8.6
+    image: maven
     script:
-      - ps -u
+      - ls -la
       - mvn -v
