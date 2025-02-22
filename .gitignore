@@ -14,6 +14,7 @@
 *.dylib
 *.bin
 
+
 # Test binary, built with `go test -c`
 *.test
 
@@ -39,3 +40,7 @@ scripts
 
 # GoDoc
 localhost:6060
+
+
+# REST API executable
+backend/app

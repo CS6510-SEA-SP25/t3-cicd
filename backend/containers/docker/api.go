@@ -1,23 +1,18 @@
 package containers
 
 import (
+	"cicd/pipeci/backend/models"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"slices"
 	"sync"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
-
-	// "github.com/docker/docker/pkg/stdcopy"
-
-	schema "cicd/pipeci/schema"
 )
 
 type DockerClient struct {
@@ -54,8 +49,13 @@ func (dc *DockerClient) PullImage(imageName string) error {
 	return err
 }
 
-/* Create Docker container from input image and commands */
-func (dc *DockerClient) CreateContainer(containerName string, imageName string, commands []string, hostWorkspaceDir string, containerWorkspaceDir string) (string, error) {
+/*
+Create Docker container from input image and commands
+
+	Rev #1: Define the bind mount for the workspace
+	* Rev #2: Git clone inside container instead of mounting from local dir
+*/
+func (dc *DockerClient) CreateContainer(containerName string, imageName string, commands []string) (string, error) {
 	// Combine multiple commands into a single shell command
 	joinedCmd := []string{"sh", "-c", ""}
 	for _, cmd := range commands {
@@ -63,21 +63,11 @@ func (dc *DockerClient) CreateContainer(containerName string, imageName string, 
 	}
 	joinedCmd[2] = joinedCmd[2][:len(joinedCmd[2])-4]
 
-	// Define the bind mount for the workspace
-	mounts := []mount.Mount{
-		{
-			Type:   mount.TypeBind,
-			Source: hostWorkspaceDir,      // Host directory
-			Target: containerWorkspaceDir, // Container directory
-		},
-	}
-
 	resp, err := dc.cli.ContainerCreate(dc.ctx, &container.Config{
-		Image:      imageName,
-		Cmd:        joinedCmd,
-		WorkingDir: containerWorkspaceDir,
+		Image: imageName,
+		Cmd:   joinedCmd,
 	}, &container.HostConfig{
-		Mounts: mounts,
+		// Mounts: mounts,
 	}, nil, nil, "")
 	if err != nil {
 		return "", err
@@ -120,20 +110,10 @@ func (dc *DockerClient) WaitContainer(containerID string) error {
 	}
 }
 
-/* Retrieve container logs */
-// func (dc *DockerClient) GetContainerLogs(containerID string) error {
-// 	out, err := dc.cli.ContainerLogs(dc.ctx, containerID, container.LogsOptions{ShowStdout: true})
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer out.Close()
-// 	_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, out)
-// 	return err
-// }
-
 // Actions on Docker
-func initContainer(job schema.JobConfiguration) error {
+func initContainer(job models.JobConfiguration, repository models.Repository) error {
 	log.Printf("Running stage `%v`, job: `%v`", job.Stage.Value, job.Name.Value)
+
 	dc, err := InitDockerClient()
 	if err != nil {
 		return err
@@ -144,23 +124,28 @@ func initContainer(job schema.JobConfiguration) error {
 		return err
 	}
 
-	hostWorkspaceDir, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	containerWorkspaceDir := "/workspace"
-	// containerName := fmt.Sprintf("p_%v.s_%v.j_%v", pipelineName, job.Stage.Value, job.Name.Value)
+	// Create container
 	containerName := "pipeline_"
-	containerID, err := dc.CreateContainer(containerName, job.Image.Value, job.Script.Value, hostWorkspaceDir, containerWorkspaceDir)
+
+	// Checkout code from Github - checkout to specific commit hash
+	var cmds []string
+	cmds = append(cmds, "git clone --no-checkout "+repository.Url+" /tmp/repo")
+	cmds = append(cmds, "cd /tmp/repo")
+	cmds = append(cmds, "git checkout "+repository.CommitHash)
+	cmds = append(cmds, job.Script.Value...)
+
+	containerID, err := dc.CreateContainer(containerName, job.Image.Value, cmds)
 	if err != nil {
 		return err
 	}
 	log.Printf("Container ID for job %v: %v", job.Name.Value, containerID)
 
+	// Start container
 	if err := dc.StartContainer(containerID); err != nil {
 		return err
 	}
 
+	// Wait for completion
 	if err := dc.WaitContainer(containerID); err != nil {
 		return err
 	}
@@ -182,22 +167,22 @@ Revisions:
 	TODO #3: continue-on-error
 */
 
-func executeJob(job schema.JobConfiguration) error {
-	err := initContainer(job)
+func executeJob(job models.JobConfiguration, repository models.Repository) error {
+	err := initContainer(job, repository)
 	if err != nil {
 		return fmt.Errorf("terminating pipeline execution, caused by failure in running job %#v\nCaused by: %v", job.Name.Value, err.Error())
 	}
 	return nil
 }
 
-/* Job Execution Result schema */
+/* Job Execution Result models */
 type JobExecResult struct {
-	Job schema.JobConfiguration
+	Job models.JobConfiguration
 	Err error
 }
 
 /* Execute a pipeline */
-func Execute(pipeline schema.PipelineConfiguration) error {
+func Execute(pipeline models.PipelineConfiguration, repository models.Repository) error {
 	execOrder := pipeline.ExecOrder
 	stageOrder := pipeline.StageOrder
 	var terminatedJobs []string = make([]string, 0)
@@ -214,7 +199,7 @@ func Execute(pipeline schema.PipelineConfiguration) error {
 				wg.Add(1)
 				go func(name string) {
 					defer wg.Done()
-					var job schema.JobConfiguration = *pipeline.Stages.Value[stage].Value[name]
+					var job models.JobConfiguration = *pipeline.Stages.Value[stage].Value[name]
 					// Check if parent jobs is terminated
 					var isTerminated bool = false
 					if job.Dependencies != nil {
@@ -231,9 +216,9 @@ func Execute(pipeline schema.PipelineConfiguration) error {
 						log.Printf("REPORT: Job `%v` is terminated!", job.Name.Value)
 					} else {
 						// Execute job then send result to channel
-						if err := executeJob(job); err != nil {
+						if err := executeJob(job, repository); err != nil {
 							errCh <- JobExecResult{Job: job, Err: err} // Send result to channel
-							log.Printf("REPORT: Job `%v` run failed!", job.Name.Value)
+							log.Printf("REPORT: Job `%v` run failed!\nCaused by: %v", job.Name.Value, err)
 						} else {
 							log.Printf("REPORT: Job `%v` run success!", job.Name.Value)
 						}
@@ -254,7 +239,7 @@ func Execute(pipeline schema.PipelineConfiguration) error {
 
 			// /* Sequential execution */
 			// for _, name := range level {
-			// 	var job schema.JobConfiguration = *pipeline.Stages.Value[stage].Value[name]
+			// 	var job models.JobConfiguration = *pipeline.Stages.Value[stage].Value[name]
 			// 	err := executeJob(job)
 			// 	if err != nil {
 			// 		return err

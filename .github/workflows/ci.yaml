@@ -6,8 +6,8 @@ on:
     branches:
       - main
     path:
-      - '!dev-docs/**'
-      - '!README.md'
+      - "!dev-docs/**"
+      - "!README.md"
   workflow_call:
     inputs:
       tag:
@@ -25,8 +25,9 @@ defaults:
     working-directory: ./CLI
 
 jobs:
-  test:
-    name: Test and Coverage
+  ### CLI codebase
+  cli-test:
+    name: CLI - Test and Coverage
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -40,11 +41,11 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Generate executable
-        run: chmod +x script_coverage.sh
+        run: chmod +x coverage.sh
       - name: Run
         run: |
           go mod tidy
-          ./script_coverage.sh > ./reports/test-summary.txt
+          ./coverage.sh > ./reports/test-summary.txt
       ####
       - name: Upload Go test results
         uses: actions/upload-artifact@v4
@@ -52,9 +53,9 @@ jobs:
           name: TestReports
           path: ./CLI/reports/*
 
-  build:
-    needs: test
-    name: Build
+  cli-build:
+    needs: cli-test
+    name: CLI - Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -68,10 +69,10 @@ jobs:
           go mod tidy
           go build
 
-  golangci-lint:
-    name: Run Lint
+  cli-golangci-lint:
+    name: CLI - Run Lint
     runs-on: ubuntu-latest
-    needs: build
+    needs: cli-build
     continue-on-error: true
     steps:
       - name: Checkout code
@@ -101,36 +102,87 @@ jobs:
       - name: Run golangci-lint
         run: golangci-lint run --config=.golangci.yaml
 
-  # godoc:
-  #   needs: build
-  #   name: Generate GoDoc
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #     - name: Setup Go
-  #       uses: actions/setup-go@v5
-  #       with:
-  #         go-version: ${{ env.GO_VERSION }}
-  #     - name: Install godoc
-  #       run: |
-  #         go mod tidy
-  #         go install golang.org/x/tools/cmd/godoc@latest
-  #         echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
-  #         go list ./...
-  #     - name: Generate documentation
-  #       run: |
-  #         mkdir -p ./docs
-  #         godoc -http=:6060 &
-  #         sleep 5  # Wait for godoc to start
-  #         wget -r -np -N -E -p -k http://localhost:6060/pkg/ -P ./docs/
-  #     - name: Upload documentation
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: go-docs
-  #         path: ./docs
-  #     - name: Deploy to GitHub Pages
-  #       uses: peaceiris/actions-gh-pages@v3
-  #       with:
-  #         github_token: ${{ secrets.GITHUB_TOKEN }}
-  #         publish_dir: ./docs
+  ### backend codebase
+  backend-test:
+    name: backend - Test and Coverage
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Generate executable
+        run: chmod +x coverage.sh
+      - name: Run
+        run: |
+          go mod tidy
+          ./coverage.sh > ./reports/test-summary.txt
+      ####
+      - name: Upload Go test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: TestReports
+          path: ./backend/reports/*
+
+  backend-build:
+    needs: backend-test
+    name: CLI - Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Build code
+        run: |
+          go mod tidy
+          go build
+
+  backend-golangci-lint:
+    name: CLI - Run Lint
+    runs-on: ubuntu-latest
+    needs: backend-build
+    continue-on-error: true
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-
+      - name: Cache golangci-lint
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/golangci-lint
+          key: golangci-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yaml') }}
+          restore-keys: |
+            golangci-${{ runner.os }}-
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - name: Run golangci-lint
+        run: golangci-lint run --config=.golangci.yaml

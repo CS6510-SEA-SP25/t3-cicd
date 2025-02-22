@@ -1,6 +1,6 @@
 test:
 	@echo TEST AND COVERAGE
-	./script_coverage.sh
+	./coverage.sh
 	@echo "--------------------------------------------"
 
 linter:

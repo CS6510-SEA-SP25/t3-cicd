@@ -4,15 +4,16 @@ Copyright © 2025 Minh Nguyen minh160302@gmail.com
 package cmd
 
 import (
+	"bytes"
+	"cicd/pipeci/apis"
+	schema "cicd/pipeci/schema"
 	"errors"
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
-
-	containers "cicd/pipeci/containers/docker"
-	schema "cicd/pipeci/schema"
 
 	"github.com/spf13/cobra"
 )
@@ -24,6 +25,7 @@ var (
 	filename   string
 	check      bool
 	showDryRun bool
+	isLocal    bool
 	pipeline   schema.PipelineConfiguration
 )
 
@@ -96,6 +98,53 @@ func isYAMLFile(filename string) bool {
 func doesfileExist(filename string) bool {
 	_, err := os.Stat(filename)
 	return !os.IsNotExist(err)
+}
+
+// Get GitHub local repository info with authentication using Personal Access Token (PAT)
+func getLocalGitRepo() (schema.Repository, error) {
+	repository := schema.Repository{}
+
+	// Get the Git remote URL
+	url, err := runGitCommand("config", "--get", "remote.origin.url")
+	if err != nil {
+		return repository, fmt.Errorf("failed to get repository URL: %v", err)
+	}
+	repository.Url = strings.Trim(url, "\n")
+
+	// ! ❯ export GITHUB_TOKEN=''
+	token := os.Getenv("GITHUB_TOKEN")
+
+	// Configure GITHUB_TOKEN if exists
+	if token != "" {
+		repository.Url = strings.Replace(repository.Url, "https://", "https://"+token+"@", 1)
+	} else {
+		log.Println("Warning: No GitHub token provided for authentication.")
+	}
+
+	// Get the latest commit hash
+	commitHash, err := runGitCommand("rev-parse", "HEAD")
+	if err != nil {
+		return repository, fmt.Errorf("failed to get commit hash: %v", err)
+	}
+	repository.CommitHash = strings.Trim(commitHash, "\n")
+
+	return repository, nil
+}
+
+/* Executes a Git command */
+func runGitCommand(args ...string) (string, error) {
+	cmd := exec.Command("git", args...)
+	cmd.Stderr = os.Stderr
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return out.String(), nil
 }
 
 /* Flag handlers */
@@ -211,7 +260,16 @@ var RunCmd = &cobra.Command{
 			return err
 		}
 
-		err = containers.Execute(pipeline)
+		if isLocal {
+			// err = containers.Execute(pipeline)
+			var repository schema.Repository
+			repository, err = getLocalGitRepo()
+			if err != nil {
+				return fmt.Errorf("error while getting local repository info: %v", err)
+			}
+			err = apis.ExecuteLocal(pipeline, repository)
+		}
+
 		return err
 	},
 }
@@ -222,10 +280,13 @@ func init() {
 	RootCmd.PersistentFlags().StringVarP(&filename, "filename", "f", ".pipelines/pipeline.yaml", "Path to the pipeline configuration file.")
 
 	// --check | -c
-	RootCmd.PersistentFlags().BoolVarP(&check, "check", "c", false, "Validate the pipeline configuration file.")
+	RootCmd.PersistentFlags().BoolVarP(&check, "check", "c", false, "Validate the pipeline configuration file")
 
 	// --dry-run
 	RootCmd.PersistentFlags().BoolVar(&showDryRun, "dry-run", false, "Show the jobs execution order.")
+
+	// --local
+	RootCmd.PersistentFlags().BoolVar(&isLocal, "local", false, "Execute the pipeline locally.")
 
 	// run
 	RootCmd.AddCommand(RunCmd)
