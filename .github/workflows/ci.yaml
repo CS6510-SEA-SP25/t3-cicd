@@ -119,9 +119,11 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
       - name: Generate executable
         run: chmod +x coverage.sh
+      - name: Create Env var
+        run: 'echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" '
       - name: Run
         run: |
-          go mod tidy
+          go mod download
           ./coverage.sh > ./reports/test-summary.txt
       ####
       - name: Upload Go test results
@@ -147,7 +149,7 @@ jobs:
           go-version: "1.23.6"
       - name: Build code
         run: |
-          go mod tidy
+          go mod download
           go build
 
   backend-golangci-lint:
