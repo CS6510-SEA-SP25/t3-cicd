@@ -50,7 +50,7 @@ jobs:
       - name: Upload Go test results
         uses: actions/upload-artifact@v4
         with:
-          name: TestReports
+          name: CLI_TestReports
           path: ./CLI/reports/*
 
   cli-build:
@@ -129,7 +129,7 @@ jobs:
       - name: Upload Go test results
         uses: actions/upload-artifact@v4
         with:
-          name: TestReports
+          name: backend_TestReports
           path: ./backend/reports/*
 
   backend-build:
