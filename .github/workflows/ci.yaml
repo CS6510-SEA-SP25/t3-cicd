@@ -134,7 +134,7 @@ jobs:
       - name: Generate executable
         run: chmod +x coverage.sh
       - name: Create Env var
-        run: 'echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" '
+        run: 'echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" && echo "DB_PASSWORD=${{ env.DB_PASSWORD }}"'
       - name: Install dependencies
         run: go mod tidy
       - name: Run test
