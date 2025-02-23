@@ -2,17 +2,17 @@
 
 set -e
 
-export DB_PASSWORD=16032002
+# export DB_PASSWORD=16032002
 
 # Clean test cache
-go clean -testcache
+# go clean -testcache
 
 # run tests and create a coverprofile
 go test ./... -coverprofile=./cover.out
 
 # open the interactive UI to check the Coverage Report
-go tool cover -html=./cover.out
-# go tool cover -html=./cover.out -o reports/test-coverage.html
+# go tool cover -html=./cover.out
+go tool cover -html=./cover.out -o reports/test-coverage.html
 
 # Set the minimum acceptable coverage percentage
 MIN_COVERAGE=80
