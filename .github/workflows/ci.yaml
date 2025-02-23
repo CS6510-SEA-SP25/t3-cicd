@@ -22,6 +22,7 @@ env:
 jobs:
   ### CLI codebase
   cli-test:
+    if: github.event.pull_request.draft == false # Skip CI for draft PRs
     name: CLI - Test and Coverage
     runs-on: ubuntu-latest
     defaults:
@@ -108,16 +109,17 @@ jobs:
 
   ### backend codebase
   backend-test:
+    if: github.event.pull_request.draft == false # Skip CI for draft PRs
     name: backend - Test and Coverage
     runs-on: ubuntu-latest
     env:
       DB_DATABASE: CicdApplication
       DB_USER: root
-      DB_PASSWORD: 16032002
+      DB_PASSWORD: root
     steps:
       - name: Set up MySQL for testing
         run: |
-          sudo /etc/init.d/mysql start
+          sudo systemctl start mysql
           sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${{ env.DB_PASSWORD }}'; FLUSH PRIVILEGES;"
           mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
       - name: Checkout code

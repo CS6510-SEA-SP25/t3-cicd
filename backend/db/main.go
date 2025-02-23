@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -14,9 +15,9 @@ func Init() {
 	// Capture connection properties.
 	cfg := mysql.Config{
 		// User:   os.Getenv("DBUSER"),
-		// Passwd: os.Getenv("DBPASS"),
-		User:      "root",
-		Passwd:    "16032002",
+		User:   "root",
+		Passwd: os.Getenv("env.DB_PASSWORD"),
+		// Passwd:    "16032002",
 		Net:       "tcp",
 		Addr:      "127.0.0.1:3306",
 		DBName:    "CicdApplication",
