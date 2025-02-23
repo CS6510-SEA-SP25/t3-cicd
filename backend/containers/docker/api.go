@@ -1,3 +1,4 @@
+//nolint:errcheck
 package DockerService
 
 import (
@@ -316,7 +317,7 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 			for result := range errCh {
 				if result.Err != nil {
 					terminatedJobs = append(terminatedJobs, result.Job.Name.Value)
-					stageHasFailedJobs = true
+					// stageHasFailedJobs = true // golangci-lint: ineffassign
 					// ! NOTE: If no job's `allow-failure`, update stage & pipeline status before quit
 					if err = stageService.UpdateStageStatusAndEndTime(stageReportId, models.FAILED); err != nil {
 						log.Printf("%v\n", err)

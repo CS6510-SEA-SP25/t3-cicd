@@ -32,6 +32,7 @@ func setupRouter() *gin.Engine {
 
 	// Report endpoints
 	router.POST("/report/local", routes.ReportPastExecutionsLocal)
+	router.POST("/report/local/query", routes.QueryPastExecutionsLocal)
 
 	// Execute endpoints
 	router.POST("/execute/local", routes.ExecuteLocal)

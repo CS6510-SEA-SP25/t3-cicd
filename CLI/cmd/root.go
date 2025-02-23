@@ -344,6 +344,9 @@ var ReportCmd = &cobra.Command{
 			// Show summary all past pipeline runs for the local repository if no pipeline name specified
 			if reportPipelineName == "" {
 				err = apis.ReportPastExecutionsLocal(repository)
+			} else {
+				// log.Printf("kkkkkkkkkkk %v", reportPipelineName)
+				err = apis.QueryPastExectionsLocal(repository, reportPipelineName)
 			}
 		}
 
@@ -373,10 +376,10 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&commit, "commit", "", "Specify Git commit hash.")
 
 	// report --pipeline "code-review"
-	ReportCmd.LocalFlags().StringVar(&reportPipelineName, "pipeline", "", "Returns the list of all pipeline runs for the specified pipeline")
+	ReportCmd.Flags().StringVar(&reportPipelineName, "pipeline", "", "Returns the list of all pipeline runs for the specified pipeline")
 
 	// report --run 2
-	ReportCmd.LocalFlags().IntVar(&reportRunCounter, "run", 0, "Run number i-th for a specified pipeline name")
+	ReportCmd.Flags().IntVar(&reportRunCounter, "run", 0, "Run number i-th for a specified pipeline name")
 
 	// run
 	RootCmd.AddCommand(RunCmd)

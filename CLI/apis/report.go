@@ -8,12 +8,13 @@ import (
 )
 
 type ReportPastExecutionsLocal_RequestBody struct {
-	Repository schema.Repository `json:"repository"`
-	IPAddress  string            `json:"ip_address"`
+	Repository   schema.Repository `json:"repository"`
+	IPAddress    string            `json:"ip_address"`
+	PipelineName string            `json:"pipeline_name"`
 }
 
 /*
-Report all local pipeline runs for all pipelines configured in the repository located in the working directory
+Report ALL local pipeline runs for all pipelines configured in the repository located in the working directory
 Currently, local execution at ip_address 0.0.0.0
 */
 func ReportPastExecutionsLocal(repository schema.Repository) error {
@@ -25,6 +26,46 @@ func ReportPastExecutionsLocal(repository schema.Repository) error {
 	}
 
 	res, err := PostRequest(BASE_URL+"/report/local", body)
+	if err != nil {
+		return fmt.Errorf("error local pipeline report: %w", err)
+	}
+
+	if res == nil {
+		log.Println("No executions detected.")
+		return nil
+	}
+
+	// Cast type interface{} -> []interface{}
+	pipelines, ok := res.([]interface{})
+	if !ok {
+		return fmt.Errorf("error local pipeline report: type casting failed for API response")
+	}
+
+	// Log each pipeline's details using the function
+	for _, pipeline := range pipelines {
+		if err = logPipelineExecutionReport(pipeline); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+/*
+Returns the list of all pipeline runs by query conditions.
+Currently,
+- Local execution at ip_address 0.0.0.0
+- only matching pipelineName, more to come
+*/
+func QueryPastExectionsLocal(repository schema.Repository, pipelineName string) error {
+	var body = ReportPastExecutionsLocal_RequestBody{
+		Repository: schema.Repository{
+			Url: removeTokenFromURL(repository.Url),
+		},
+		IPAddress:    "0.0.0.0",
+		PipelineName: strings.TrimSpace(pipelineName),
+	}
+
+	res, err := PostRequest(BASE_URL+"/report/local/query", body)
 	if err != nil {
 		return fmt.Errorf("error local pipeline report: %w", err)
 	}
