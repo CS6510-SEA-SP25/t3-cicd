@@ -1,26 +1,6 @@
 create database if not exists CicdApplication;
 use CicdApplication;
 
-/**
-tables:
-- Pipelines
-	- repo_id
-- Jobs
-	- JobDependencies
-- Repository
-- Logs
-	- 
-- Executions
-	- exec_id
-	- pipeline_id
-    - time
-- Events
-	- event_id
-    - exec_id
-    - order
-    
-enum ExecStatus (success, failed, canceled)
-**/
 
 drop table if exists Dependencies;
 drop table if exists Jobs;
