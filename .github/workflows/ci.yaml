@@ -132,7 +132,7 @@ jobs:
           sudo systemctl start mysql
           mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
       - name: Generate executable
-        run: cd backend && chmod +x coverage.sh
+        run: chmod +x coverage.sh
       - name: Create Env var
         run: 'echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" '
       - name: Install dependencies
