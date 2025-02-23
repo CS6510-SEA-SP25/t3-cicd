@@ -122,11 +122,12 @@ jobs:
         run: chmod +x coverage.sh
       - name: Create Env var
         run: 'echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" '
-      - name: Run
-        run: |
-          go mod tidy
-          echo "Install dependencies done."
-          ./coverage.sh > ./reports/test-summary.txt
+      - name: Install dependencies
+        run: go mod tidy
+      - name: Run test
+        run: go test ./...
+      - name: Generate coverage reports
+        run: ./coverage.sh > ./reports/test-summary.txt
       ####
       - name: Upload Go test results
         uses: actions/upload-artifact@v4

@@ -8,7 +8,7 @@ go clean -testcache
 # run tests and create a coverprofile
 go test ./... -coverprofile=./cover.out
 
-# open the interactive UI to check the Coverage Repor
+# open the interactive UI to check the Coverage Report
 # go tool cover -html=./cover.out
 go tool cover -html=./cover.out -o reports/test-coverage.html
 
