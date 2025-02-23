@@ -112,6 +112,10 @@ jobs:
     if: github.event.pull_request.draft == false # Skip CI for draft PRs
     name: backend - Test and Coverage
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./backend
     env:
       DB_DATABASE: CicdApplication
       DB_USER: root
@@ -119,7 +123,7 @@ jobs:
     steps:
       - name: Set up MySQL
         run: |
-          sudo /etc/init.d/mysql start
+          sudo systemctl start mysql
           mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
       - name: Checkout code
         uses: actions/checkout@v4
