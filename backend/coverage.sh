@@ -4,8 +4,8 @@ set -e
 
 # export DB_PASSWORD=16032002
 
-# Clean test cache
-go clean -testcache
+# # Clean test cache
+# go clean -testcache
 
 # run tests and create a coverprofile
 go test ./... -coverprofile=./cover.out
