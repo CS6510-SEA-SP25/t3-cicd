@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cicd/pipeci/backend/db"
 	"cicd/pipeci/backend/models"
 	"cicd/pipeci/backend/routes"
 	"encoding/json"
@@ -25,6 +26,7 @@ func TestPingRoute(t *testing.T) {
 }
 
 func TestExecuteLocal(t *testing.T) {
+	db.Init()
 	router := setupRouter()
 
 	w := httptest.NewRecorder()
@@ -73,6 +75,7 @@ func TestExecuteLocal(t *testing.T) {
 }
 
 func TestExecuteLocalFailed(t *testing.T) {
+	db.Init()
 	router := setupRouter()
 
 	w := httptest.NewRecorder()

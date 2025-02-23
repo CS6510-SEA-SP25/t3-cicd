@@ -1,6 +1,7 @@
-package containers
+package DockerService
 
 import (
+	"cicd/pipeci/backend/db"
 	"cicd/pipeci/backend/models"
 	"fmt"
 	"strings"
@@ -57,9 +58,9 @@ func TestCreateContainer(t *testing.T) {
 	commands := []string{"echo 'Hello from container'"}
 
 	// Create a container
-	containerID, err := dc.CreateContainer(TEST_PIPELINE_PREFIX+"TestCreateContainer", "alpine:latest", commands)
+	containerId, err := dc.CreateContainer(TEST_PIPELINE_PREFIX+"TestCreateContainer", "alpine:latest", commands)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, containerID)
+	assert.NotEmpty(t, containerId)
 }
 
 // Test starting a container
@@ -73,12 +74,12 @@ func TestStartContainer(t *testing.T) {
 
 	commands := []string{"echo 'Container running'"}
 
-	containerID, err := dc.CreateContainer(TEST_PIPELINE_PREFIX+"TestStartContainer", "alpine:latest", commands)
+	containerId, err := dc.CreateContainer(TEST_PIPELINE_PREFIX+"TestStartContainer", "alpine:latest", commands)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, containerID)
+	assert.NotEmpty(t, containerId)
 
 	// Start the container
-	err = dc.StartContainer(containerID)
+	err = dc.StartContainer(containerId)
 	assert.NoError(t, err)
 }
 
@@ -93,14 +94,14 @@ func TestWaitContainer(t *testing.T) {
 
 	commands := []string{"echo 'Wait test successful'"}
 
-	containerID, err := dc.CreateContainer(TEST_PIPELINE_PREFIX+"TestWaitContainer", "alpine:latest", commands)
+	containerId, err := dc.CreateContainer(TEST_PIPELINE_PREFIX+"TestWaitContainer", "alpine:latest", commands)
 	assert.NoError(t, err)
 
-	err = dc.StartContainer(containerID)
+	err = dc.StartContainer(containerId)
 	assert.NoError(t, err)
 
 	// Wait for completion
-	err = dc.WaitContainer(containerID)
+	err = dc.WaitContainer(containerId)
 	assert.NoError(t, err)
 }
 
@@ -124,14 +125,15 @@ func cleanUpAfterTest(dc *DockerClient) error {
 		}
 	}
 
-	for _, containerID := range removedIds {
-		go dc.DeleteContainer(containerID)
+	for _, containerId := range removedIds {
+		go dc.DeleteContainer(containerId)
 	}
 	return nil
 }
 
 // Test initContainer
 func TestExecute(t *testing.T) {
+	db.Init()
 	dc, err := InitDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()
@@ -165,7 +167,7 @@ func TestExecute(t *testing.T) {
 
 	err = Execute(pipeline, models.Repository{
 		Url: "https://github.com/CS6510-SEA-SP25/t3-cicd.git", CommitHash: "ae47cc929081a0312a54bf85f3f6c232a912e243",
-	}) // TODO: fix test
+	})
 	assert.NoError(t, err)
 
 	// Cleanup
@@ -175,6 +177,7 @@ func TestExecute(t *testing.T) {
 
 // Test job execution failed
 func TestExecuteFailed(t *testing.T) {
+	db.Init()
 	dc, err := InitDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()

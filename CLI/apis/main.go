@@ -3,6 +3,7 @@ package apis
 import (
 	"cicd/pipeci/schema"
 	"fmt"
+	"log"
 	// "log"
 )
 
@@ -17,11 +18,11 @@ type ExecuteLocal_RequestBody struct {
 func ExecuteLocal(pipeline schema.PipelineConfiguration, repository schema.Repository) error {
 	var body = &ExecuteLocal_RequestBody{Pipeline: pipeline, Repository: repository}
 
-	_, err := PostRequest(BASE_URL+"/execute/local", body)
+	res, err := PostRequest(BASE_URL+"/execute/local", body)
 	if err != nil {
 		return fmt.Errorf("error local pipeline execution: %w", err)
 	}
 
-	// log.Printf("%v", res)
+	log.Printf("%v", res)
 	return nil
 }

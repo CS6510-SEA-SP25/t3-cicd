@@ -1,10 +1,11 @@
 package routes
 
 import (
-	containers "cicd/pipeci/backend/containers/docker"
 	"cicd/pipeci/backend/models"
 	"log"
 	"net/http"
+
+	DockerService "cicd/pipeci/backend/containers/docker"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,8 +23,9 @@ func ExecuteLocal(c *gin.Context) {
 		return
 	}
 
-	err = containers.Execute(body.Pipeline, body.Repository)
+	err = DockerService.Execute(body.Pipeline, body.Repository)
 	if err != nil {
+		log.Printf("%v", err)
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false})
 	} else {
 		c.IndentedJSON(http.StatusOK, gin.H{"success": true})

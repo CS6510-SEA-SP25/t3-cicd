@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cicd/pipeci/backend/db"
 	"cicd/pipeci/backend/routes"
 	"log"
 	"net/http"
@@ -38,6 +39,8 @@ func setupRouter() *gin.Engine {
 }
 
 func main() {
+	db.Init()
+
 	router := setupRouter()
 	// Expose
 	_ = router.Run("0.0.0.0:8080")

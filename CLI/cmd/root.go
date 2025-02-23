@@ -26,7 +26,9 @@ var (
 	check      bool
 	showDryRun bool
 	isLocal    bool
-	pipeline   schema.PipelineConfiguration
+	// repo       string
+	// commit     string
+	pipeline schema.PipelineConfiguration
 )
 
 /* Base handler for all commands under root */
@@ -260,14 +262,33 @@ var RunCmd = &cobra.Command{
 			return err
 		}
 
+		// TODO 1: --local: pull image and run
+		// TODO 2: no local: run the deployed version
 		if isLocal {
-			// err = containers.Execute(pipeline)
 			var repository schema.Repository
 			repository, err = getLocalGitRepo()
 			if err != nil {
 				return fmt.Errorf("error while getting local repository info: %v", err)
 			}
 			err = apis.ExecuteLocal(pipeline, repository)
+		}
+
+		return err
+	},
+}
+
+// Sub-command: pipeci report
+var ReportCmd = &cobra.Command{
+	Use:           "run",
+	Short:         "usage: pipeci report",
+	Long:          "Report on past pipeline execution by input parameters",
+	SilenceUsage:  true,
+	SilenceErrors: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		err := mandatoryProcess(cmd)
+
+		if err != nil {
+			return err
 		}
 
 		return err
@@ -288,8 +309,18 @@ func init() {
 	// --local
 	RootCmd.PersistentFlags().BoolVar(&isLocal, "local", false, "Execute the pipeline locally.")
 
+	// TODO: check repo and commit
+	// // --repo
+	// RootCmd.PersistentFlags().StringVar(&repo, "repo", "", "Specify GitHub repository.")
+
+	// // --commit
+	// RootCmd.PersistentFlags().StringVar(&commit, "commit", "", "Specify Git commit hash.")
+
 	// run
 	RootCmd.AddCommand(RunCmd)
+
+	// report
+	RootCmd.AddCommand(ReportCmd)
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

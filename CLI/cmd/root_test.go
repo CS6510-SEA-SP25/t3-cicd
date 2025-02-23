@@ -254,13 +254,12 @@ func TestRun(t *testing.T) {
 		t.Fatalf("failed to change directory: %v", err)
 	}
 
-	// TODO: fix this test with Dockerized backend?
 	cmd.RootCmd.SetArgs([]string{"run", "-f", ".pipelines/test/docker_run_success.yaml", "--local"})
 
 	err = cmd.RootCmd.Execute()
-	assert.Error(t, assert.AnError)
+	assert.NoError(t, err)
 
-	if err == nil {
+	if err != nil {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }
