@@ -16,7 +16,7 @@ func Init() {
 	cfg := mysql.Config{
 		// User:   os.Getenv("DBUSER"),
 		User:   "root",
-		Passwd: os.Getenv("env.DB_PASSWORD"),
+		Passwd: os.Getenv("DB_PASSWORD"),
 		// Passwd:    "16032002",
 		Net:       "tcp",
 		Addr:      "127.0.0.1:3306",
