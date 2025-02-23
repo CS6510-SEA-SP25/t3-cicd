@@ -1,12 +1,11 @@
-package containers
+package DockerService
 
 import (
-	"cicd/pipeci/schema"
+	"cicd/pipeci/backend/db"
+	"cicd/pipeci/backend/models"
 	"fmt"
 	"strings"
 	"testing"
-
-	"os"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
@@ -56,17 +55,12 @@ func TestCreateContainer(t *testing.T) {
 	err = dc.PullImage("alpine:latest")
 	assert.NoError(t, err)
 
-	// Get current working directory
-	hostDir, err := os.Getwd()
-	assert.NoError(t, err)
-
-	containerDir := "/workspace"
 	commands := []string{"echo 'Hello from container'"}
 
 	// Create a container
-	containerID, err := dc.CreateContainer(TEST_PIPELINE_PREFIX+"TestCreateContainer", "alpine:latest", commands, hostDir, containerDir)
+	containerId, err := dc.CreateContainer(TEST_PIPELINE_PREFIX+"TestCreateContainer", "alpine:latest", commands)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, containerID)
+	assert.NotEmpty(t, containerId)
 }
 
 // Test starting a container
@@ -78,18 +72,14 @@ func TestStartContainer(t *testing.T) {
 	err = dc.PullImage("alpine:latest")
 	assert.NoError(t, err)
 
-	hostDir, err := os.Getwd()
-	assert.NoError(t, err)
-
-	containerDir := "/workspace"
 	commands := []string{"echo 'Container running'"}
 
-	containerID, err := dc.CreateContainer(TEST_PIPELINE_PREFIX+"TestStartContainer", "alpine:latest", commands, hostDir, containerDir)
+	containerId, err := dc.CreateContainer(TEST_PIPELINE_PREFIX+"TestStartContainer", "alpine:latest", commands)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, containerID)
+	assert.NotEmpty(t, containerId)
 
 	// Start the container
-	err = dc.StartContainer(containerID)
+	err = dc.StartContainer(containerId)
 	assert.NoError(t, err)
 }
 
@@ -102,20 +92,16 @@ func TestWaitContainer(t *testing.T) {
 	err = dc.PullImage("alpine:latest")
 	assert.NoError(t, err)
 
-	hostDir, err := os.Getwd()
-	assert.NoError(t, err)
-
-	containerDir := "/workspace"
 	commands := []string{"echo 'Wait test successful'"}
 
-	containerID, err := dc.CreateContainer(TEST_PIPELINE_PREFIX+"TestWaitContainer", "alpine:latest", commands, hostDir, containerDir)
+	containerId, err := dc.CreateContainer(TEST_PIPELINE_PREFIX+"TestWaitContainer", "alpine:latest", commands)
 	assert.NoError(t, err)
 
-	err = dc.StartContainer(containerID)
+	err = dc.StartContainer(containerId)
 	assert.NoError(t, err)
 
 	// Wait for completion
-	err = dc.WaitContainer(containerID)
+	err = dc.WaitContainer(containerId)
 	assert.NoError(t, err)
 }
 
@@ -139,33 +125,34 @@ func cleanUpAfterTest(dc *DockerClient) error {
 		}
 	}
 
-	for _, containerID := range removedIds {
-		go dc.DeleteContainer(containerID)
+	for _, containerId := range removedIds {
+		go dc.DeleteContainer(containerId)
 	}
 	return nil
 }
 
 // Test initContainer
 func TestExecute(t *testing.T) {
+	db.Init()
 	dc, err := InitDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()
 
-	var pipeline schema.PipelineConfiguration = schema.PipelineConfiguration{
-		Pipeline: &schema.ConfigurationNode[schema.PipelineInfo]{
-			Value: schema.PipelineInfo{Name: &schema.ConfigurationNode[string]{Value: TEST_PIPELINE_NAME}},
+	var pipeline models.PipelineConfiguration = models.PipelineConfiguration{
+		Pipeline: &models.ConfigurationNode[models.PipelineInfo]{
+			Value: models.PipelineInfo{Name: &models.ConfigurationNode[string]{Value: TEST_PIPELINE_NAME}},
 		},
-		Version:    &schema.ConfigurationNode[string]{Value: "v0"},
+		Version:    &models.ConfigurationNode[string]{Value: "v0"},
 		StageOrder: []string{"build"},
-		Stages: &schema.ConfigurationNode[map[string]*schema.ConfigurationNode[map[string]*schema.JobConfiguration]]{
-			Value: map[string]*schema.ConfigurationNode[map[string]*schema.JobConfiguration]{
+		Stages: &models.ConfigurationNode[map[string]*models.ConfigurationNode[map[string]*models.JobConfiguration]]{
+			Value: map[string]*models.ConfigurationNode[map[string]*models.JobConfiguration]{
 				"build": {
-					Value: map[string]*schema.JobConfiguration{
+					Value: map[string]*models.JobConfiguration{
 						"compile": {
-							Name:  &schema.ConfigurationNode[string]{Value: "compile"},
-							Stage: &schema.ConfigurationNode[string]{Value: "build"},
-							Image: &schema.ConfigurationNode[string]{Value: "maven"},
-							Script: &schema.ConfigurationNode[[]string]{
+							Name:  &models.ConfigurationNode[string]{Value: "compile"},
+							Stage: &models.ConfigurationNode[string]{Value: "build"},
+							Image: &models.ConfigurationNode[string]{Value: "maven"},
+							Script: &models.ConfigurationNode[[]string]{
 								Value: []string{"ls -la", "mvn -v"},
 							},
 						},
@@ -178,7 +165,9 @@ func TestExecute(t *testing.T) {
 		},
 	}
 
-	err = Execute(pipeline)
+	err = Execute(pipeline, models.Repository{
+		Url: "https://github.com/CS6510-SEA-SP25/t3-cicd.git", CommitHash: "ae47cc929081a0312a54bf85f3f6c232a912e243",
+	})
 	assert.NoError(t, err)
 
 	// Cleanup
@@ -188,25 +177,26 @@ func TestExecute(t *testing.T) {
 
 // Test job execution failed
 func TestExecuteFailed(t *testing.T) {
+	db.Init()
 	dc, err := InitDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()
 
-	var pipeline schema.PipelineConfiguration = schema.PipelineConfiguration{
-		Pipeline: &schema.ConfigurationNode[schema.PipelineInfo]{
-			Value: schema.PipelineInfo{Name: &schema.ConfigurationNode[string]{Value: TEST_PIPELINE_NAME}},
+	var pipeline models.PipelineConfiguration = models.PipelineConfiguration{
+		Pipeline: &models.ConfigurationNode[models.PipelineInfo]{
+			Value: models.PipelineInfo{Name: &models.ConfigurationNode[string]{Value: TEST_PIPELINE_NAME}},
 		},
-		Version:    &schema.ConfigurationNode[string]{Value: "v0"},
+		Version:    &models.ConfigurationNode[string]{Value: "v0"},
 		StageOrder: []string{"build"},
-		Stages: &schema.ConfigurationNode[map[string]*schema.ConfigurationNode[map[string]*schema.JobConfiguration]]{
-			Value: map[string]*schema.ConfigurationNode[map[string]*schema.JobConfiguration]{
+		Stages: &models.ConfigurationNode[map[string]*models.ConfigurationNode[map[string]*models.JobConfiguration]]{
+			Value: map[string]*models.ConfigurationNode[map[string]*models.JobConfiguration]{
 				"build": {
-					Value: map[string]*schema.JobConfiguration{
+					Value: map[string]*models.JobConfiguration{
 						"compile": {
-							Name:  &schema.ConfigurationNode[string]{Value: "compile"},
-							Stage: &schema.ConfigurationNode[string]{Value: "build"},
-							Image: &schema.ConfigurationNode[string]{Value: "mavennnnn"},
-							Script: &schema.ConfigurationNode[[]string]{
+							Name:  &models.ConfigurationNode[string]{Value: "compile"},
+							Stage: &models.ConfigurationNode[string]{Value: "build"},
+							Image: &models.ConfigurationNode[string]{Value: "mavennnnn"},
+							Script: &models.ConfigurationNode[[]string]{
 								Value: []string{"ls -la", "mvn -v"},
 							},
 						},
@@ -219,7 +209,7 @@ func TestExecuteFailed(t *testing.T) {
 		},
 	}
 
-	err = Execute(pipeline)
+	err = Execute(pipeline, models.Repository{})
 	if err == nil {
 		t.Errorf("expected an error but got none")
 	} else {

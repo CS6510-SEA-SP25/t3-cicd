@@ -11,60 +11,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Location of ConfigurationNode in YAML file.
-type YAMLFileLocation struct {
-	Line   int
-	Column int
-}
-
-// Configuration Node contains value and location of YAML element.
-type ConfigurationNode[T any] struct {
-	Value    T
-	Location *YAMLFileLocation
-}
-
-// Job configuration.
-type JobConfiguration struct {
-	// (required) Name of job within a stage.
-	Name *ConfigurationNode[string]
-	// (required) Stage name.
-	Stage *ConfigurationNode[string]
-	// (required) Docker image to be used.
-	Image *ConfigurationNode[string]
-	// (required) List of scripts to be executed sequentially.
-	Script *ConfigurationNode[[]string]
-	// (optional) Jobs within the same statge that must complete successfully before this job can start executing.
-	Dependencies *ConfigurationNode[[]string]
-}
-
-// Pipeline identifier info.
-type PipelineInfo struct {
-	Name *ConfigurationNode[string] // (required) Name of pipeline.
-}
-
-// Pipeline configuration
-type PipelineConfiguration struct {
-	Version  *ConfigurationNode[string] // (required) API version. Currently set at v0.
-	Pipeline *ConfigurationNode[PipelineInfo]
-	Stages   *ConfigurationNode[map[string]*ConfigurationNode[map[string]*JobConfiguration]]
-
-	/*
-		Jobs execution order for each stage (topological)
-		e.g. "build" -> [[job1, job2], [job3], [job4]]
-	*/
-	StageOrder []string
-	ExecOrder  map[string][][]string
-}
-
-// Check if a YAML variable is string
+// Check if a YAML variable is invalid string
 func isInvalidString(value interface{}) bool {
 	if value == "" {
-		return false
+		return true
 	}
 	// return (reflect.TypeOf(i).Kind() != reflect.String) || (i == "")
 	switch v := value.(type) {
 	case int, float64, int64, float32, int32, int16, int8, uint, uint64, uint32, uint16, uint8:
-		return false
+		return true
 	case string:
 		_, err := strconv.ParseFloat(v, 64) // Try to convert string to a number
 		return err == nil
@@ -101,17 +56,18 @@ func parsePipelineConfig(root *yaml.Node, config *PipelineConfiguration) (YAMLFi
 			config.Stages = &ConfigurationNode[map[string]*ConfigurationNode[map[string]*JobConfiguration]]{Value: make(map[string]*ConfigurationNode[map[string]*JobConfiguration]), Location: &YAMLFileLocation{Line: keyNode.Line, Column: keyNode.Column}}
 			if valueNode.Kind == yaml.SequenceNode {
 				for _, item := range valueNode.Content {
-					if isInvalidString(item.Value) {
+					val := strings.TrimSpace(item.Value)
+					if isInvalidString(val) {
 						return *config.Stages.Location, errors.New("syntax error: stage name must be a non-empty string")
 					}
-					if config.Stages.Value[item.Value] != nil {
+					if config.Stages.Value[val] != nil {
 						return *config.Stages.Location, errors.New("syntax error: duplicated stages")
 					}
-					config.Stages.Value[item.Value] = &ConfigurationNode[map[string]*JobConfiguration]{
+					config.Stages.Value[val] = &ConfigurationNode[map[string]*JobConfiguration]{
 						Value:    make(map[string]*JobConfiguration),
 						Location: &YAMLFileLocation{Line: item.Line, Column: item.Column},
 					}
-					config.StageOrder = append(config.StageOrder, item.Value)
+					config.StageOrder = append(config.StageOrder, val)
 				}
 			}
 		case "jobs":
