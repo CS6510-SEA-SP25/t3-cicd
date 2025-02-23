@@ -30,3 +30,14 @@ func TestReportPastExecutionsLocal(t *testing.T) {
 	})
 	assert.NoError(t, err)
 }
+
+func TestQueryPastExectionsLocal(t *testing.T) {
+	err := QueryPastExectionsLocal(schema.Repository{
+		Url: "https://github.com/CS6510-SEA-SP25/t3-cicd.git",
+	}, "name")
+	// assert.NoError(t, err)
+	// assert.Error(t, err)
+
+	err = logPipelineExecutionReport("invalid")
+	assert.Error(t, err)
+}
