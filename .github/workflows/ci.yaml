@@ -45,6 +45,7 @@ jobs:
       - name: Run
         run: |
           go mod tidy
+          echo "Install dependencies done."
           ./coverage.sh > ./reports/test-summary.txt
       ####
       - name: Upload Go test results
