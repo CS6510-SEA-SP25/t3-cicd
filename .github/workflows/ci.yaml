@@ -121,16 +121,16 @@ jobs:
       DB_USER: root
       DB_PASSWORD: root
     steps:
-      - name: Set up MySQL
-        run: |
-          sudo systemctl start mysql
-          mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+      - name: Set up MySQL
+        run: |
+          sudo systemctl start mysql
+          mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
       - name: Generate executable
         run: cd backend && chmod +x coverage.sh
       - name: Create Env var
