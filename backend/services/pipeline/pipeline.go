@@ -132,7 +132,7 @@ func (service *PipelineService) QueryPipelines(filters map[string]interface{}) (
 
 // Deletes all pipelines with names starting with "test_"
 func (service *PipelineService) CleanUpTestPipelines() error {
-	_, err := service.db.Exec("DELETE FROM Pipelines WHERE name LIKE ?", "test_%")
+	_, err := service.db.Exec("DELETE FROM Pipelines WHERE name LIKE ?", "'test%'")
 	if err != nil {
 		return fmt.Errorf("CleanUpTestPipelines: %v", err)
 	}

@@ -11,15 +11,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Check if a YAML variable is string
+// Check if a YAML variable is invalid string
 func isInvalidString(value interface{}) bool {
 	if value == "" {
-		return false
+		return true
 	}
 	// return (reflect.TypeOf(i).Kind() != reflect.String) || (i == "")
 	switch v := value.(type) {
 	case int, float64, int64, float32, int32, int16, int8, uint, uint64, uint32, uint16, uint8:
-		return false
+		return true
 	case string:
 		_, err := strconv.ParseFloat(v, 64) // Try to convert string to a number
 		return err == nil
@@ -56,17 +56,18 @@ func parsePipelineConfig(root *yaml.Node, config *PipelineConfiguration) (YAMLFi
 			config.Stages = &ConfigurationNode[map[string]*ConfigurationNode[map[string]*JobConfiguration]]{Value: make(map[string]*ConfigurationNode[map[string]*JobConfiguration]), Location: &YAMLFileLocation{Line: keyNode.Line, Column: keyNode.Column}}
 			if valueNode.Kind == yaml.SequenceNode {
 				for _, item := range valueNode.Content {
-					if isInvalidString(item.Value) {
+					val := strings.TrimSpace(item.Value)
+					if isInvalidString(val) {
 						return *config.Stages.Location, errors.New("syntax error: stage name must be a non-empty string")
 					}
-					if config.Stages.Value[item.Value] != nil {
+					if config.Stages.Value[val] != nil {
 						return *config.Stages.Location, errors.New("syntax error: duplicated stages")
 					}
-					config.Stages.Value[item.Value] = &ConfigurationNode[map[string]*JobConfiguration]{
+					config.Stages.Value[val] = &ConfigurationNode[map[string]*JobConfiguration]{
 						Value:    make(map[string]*JobConfiguration),
 						Location: &YAMLFileLocation{Line: item.Line, Column: item.Column},
 					}
-					config.StageOrder = append(config.StageOrder, item.Value)
+					config.StageOrder = append(config.StageOrder, val)
 				}
 			}
 		case "jobs":

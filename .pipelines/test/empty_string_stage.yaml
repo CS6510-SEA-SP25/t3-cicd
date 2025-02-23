@@ -1,0 +1,19 @@
+version: v0
+
+# Pipeline info
+pipeline:
+  name: empty_string_stage
+
+# List of stages - show order of execution
+stages:
+  - build
+  - 
+# Stages defined below
+jobs:
+  # build
+  - name: compile
+    stage: build
+    image: maven
+    script:
+      - ls -la
+      - mvn -v

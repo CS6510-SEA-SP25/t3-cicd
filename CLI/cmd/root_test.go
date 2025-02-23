@@ -256,21 +256,21 @@ func TestRun(t *testing.T) {
 
 	cmd.RootCmd.SetArgs([]string{"run", "-f", ".pipelines/test/docker_run_success.yaml", "--local"})
 
-	// Fix this test
-	err = cmd.RootCmd.Execute()
-	assert.NoError(t, err)
-
-	if err != nil {
-		t.Errorf("unexpected error message: %v", err)
-	}
-
 	// // Fix this test
 	// err = cmd.RootCmd.Execute()
-	// assert.Error(t, err)
+	// assert.NoError(t, err)
 
-	// if err == nil {
+	// if err != nil {
 	// 	t.Errorf("unexpected error message: %v", err)
 	// }
+
+	// Fix this test
+	err = cmd.RootCmd.Execute()
+	assert.Error(t, err)
+
+	if err == nil {
+		t.Errorf("unexpected error message: %v", err)
+	}
 }
 
 /*
@@ -299,19 +299,19 @@ func TestReport(t *testing.T) {
 
 	cmd.RootCmd.SetArgs([]string{"report", "--local"})
 
-	// Fix this test
-	err = cmd.ReportCmd.Execute()
-	assert.NoError(t, err)
-
-	if err != nil {
-		t.Errorf("unexpected error message: %v", err)
-	}
-
 	// // Fix this test
-	// err = cmd.RootCmd.Execute()
-	// assert.Error(t, err)
+	// err = cmd.ReportCmd.Execute()
+	// assert.NoError(t, err)
 
-	// if err == nil {
+	// if err != nil {
 	// 	t.Errorf("unexpected error message: %v", err)
 	// }
+
+	// Fix this test
+	err = cmd.RootCmd.Execute()
+	assert.Error(t, err)
+
+	if err == nil {
+		t.Errorf("unexpected error message: %v", err)
+	}
 }

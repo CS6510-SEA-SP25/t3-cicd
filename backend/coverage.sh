@@ -2,6 +2,8 @@
 
 set -e
 
+export DB_PASSWORD=16032002
+
 # Clean test cache
 go clean -testcache
 
