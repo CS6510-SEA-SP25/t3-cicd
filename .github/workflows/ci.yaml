@@ -117,10 +117,9 @@ jobs:
       DB_USER: root
       DB_PASSWORD: root
     steps:
-      - name: Set up MySQL for testing
+      - name: Set up MySQL
         run: |
-          sudo systemctl start mysql
-          sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${{ env.DB_PASSWORD }}'; FLUSH PRIVILEGES;"
+          sudo /etc/init.d/mysql start
           mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
       - name: Checkout code
         uses: actions/checkout@v4
