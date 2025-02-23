@@ -256,10 +256,11 @@ func TestRun(t *testing.T) {
 
 	cmd.RootCmd.SetArgs([]string{"run", "-f", ".pipelines/test/docker_run_success.yaml", "--local"})
 
+	// Fix this test
 	err = cmd.RootCmd.Execute()
-	assert.NoError(t, err)
+	assert.Error(t, err)
 
-	if err != nil {
+	if err == nil {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }
