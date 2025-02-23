@@ -19,7 +19,7 @@ func Init() {
 		Passwd: os.Getenv("DB_PASSWORD"),
 		// Passwd:    "16032002",
 		Net:       "tcp",
-		Addr:      "127.0.0.1:3306",
+		Addr:      "0.0.0.0:3306",
 		DBName:    "CicdApplication",
 		ParseTime: true,
 	}
