@@ -107,11 +107,20 @@ jobs:
   backend-test:
     name: backend - Test and Coverage
     runs-on: ubuntu-latest
+    env:
+      DB_DATABASE: CicdApplication
+      DB_USER: root
+      DB_PASSWORD: "16032002"
     defaults:
       run:
         shell: bash
         working-directory: ./backend
     steps:
+      - name: Set up MySQL for testing
+        run: |
+          sudo /etc/init.d/mysql start
+          mysqladmin -u root password "16032002"
+          mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Setup Go
