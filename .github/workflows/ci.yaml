@@ -19,11 +19,6 @@ env:
   GO_VERSION: "1.23.6"
   GOLANGCI_LINT_VERSION: v1.60
 
-defaults:
-  run:
-    shell: bash
-    working-directory: ./CLI
-
 jobs:
   ### CLI codebase
   cli-test:
@@ -58,6 +53,10 @@ jobs:
     needs: cli-test
     name: CLI - Build
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./CLI
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -75,6 +74,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: cli-build
     continue-on-error: true
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./CLI
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -111,10 +114,6 @@ jobs:
       DB_DATABASE: CicdApplication
       DB_USER: root
       DB_PASSWORD: "16032002"
-    defaults:
-      run:
-        shell: bash
-        working-directory: ./backend
     steps:
       - name: Set up MySQL for testing
         run: |
@@ -128,7 +127,7 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Generate executable
-        run: chmod +x coverage.sh
+        run: cd backend && chmod +x coverage.sh
       - name: Create Env var
         run: 'echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" '
       - name: Install dependencies
