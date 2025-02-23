@@ -22,13 +22,21 @@ import (
 Command line variables
 */
 var (
+	// Global flags
 	filename   string
 	check      bool
 	showDryRun bool
 	isLocal    bool
-	// repo       string
-	// commit     string
+	repo       string
+	commit     string
+
+	// report subFlags
+	reportPipelineName string
+	reportRunCounter   int
+
 	pipeline schema.PipelineConfiguration
+
+	GlobalDirectory string = "." // Current directory
 )
 
 /* Base handler for all commands under root */
@@ -50,6 +58,11 @@ func mandatoryProcess(cmd *cobra.Command) error {
 	}
 
 	// flags
+	err = HandleRepoFlag()
+	if err != nil {
+		return err
+	}
+
 	err = HandleFilenameFlag()
 	if err != nil {
 		return err
@@ -123,18 +136,27 @@ func getLocalGitRepo() (schema.Repository, error) {
 		log.Println("Warning: No GitHub token provided for authentication.")
 	}
 
-	// Get the latest commit hash
-	commitHash, err := runGitCommand("rev-parse", "HEAD")
-	if err != nil {
-		return repository, fmt.Errorf("failed to get commit hash: %v", err)
+	// Get the latest commit hash if not specified
+	if commit == "" {
+		commitHash, err := runGitCommand("rev-parse", "HEAD")
+		if err != nil {
+			return repository, fmt.Errorf("failed to get commit hash: %v", err)
+		}
+		repository.CommitHash = strings.Trim(commitHash, "\n")
+	} else {
+		repository.CommitHash = commit
 	}
-	repository.CommitHash = strings.Trim(commitHash, "\n")
 
 	return repository, nil
 }
 
-/* Executes a Git command */
+/*
+Executes a Git command at the current/specified directory
+*/
 func runGitCommand(args ...string) (string, error) {
+	if GlobalDirectory != "." {
+		args = append([]string{"-C", GlobalDirectory}, args...)
+	}
 	cmd := exec.Command("git", args...)
 	cmd.Stderr = os.Stderr
 
@@ -248,6 +270,28 @@ func HandleDryRunFlag() error {
 	return nil
 }
 
+/*
+Specifies the location of the repository to use (--repo must a local directory)
+*/
+// --repo
+func HandleRepoFlag() error {
+	// Default repo if not provided
+	if repo == "" {
+		GlobalDirectory = "."
+		return nil
+	}
+
+	// Check if repo is a local directory
+	fileInfo, err := os.Stat(repo)
+	if err == nil && fileInfo.IsDir() {
+		// If it's a local directory, change to it
+		GlobalDirectory = repo
+		return nil
+	} else {
+		return fmt.Errorf("--repo value must be a valid local directory")
+	}
+}
+
 // Sub-command: pipeci run
 var RunCmd = &cobra.Command{
 	Use:           "run",
@@ -279,16 +323,28 @@ var RunCmd = &cobra.Command{
 
 // Sub-command: pipeci report
 var ReportCmd = &cobra.Command{
-	Use:           "run",
+	Use:           "report",
 	Short:         "usage: pipeci report",
 	Long:          "Report on past pipeline execution by input parameters",
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		err := mandatoryProcess(cmd)
-
 		if err != nil {
 			return err
+		}
+
+		if isLocal {
+			var repository schema.Repository
+			repository, err = getLocalGitRepo()
+			if err != nil {
+				return fmt.Errorf("error while getting local repository info: %v", err)
+			}
+
+			// Show summary all past pipeline runs for the local repository if no pipeline name specified
+			if reportPipelineName == "" {
+				err = apis.ReportPastExecutionsLocal(repository)
+			}
 		}
 
 		return err
@@ -310,11 +366,17 @@ func init() {
 	RootCmd.PersistentFlags().BoolVar(&isLocal, "local", false, "Execute the pipeline locally.")
 
 	// TODO: check repo and commit
-	// // --repo
-	// RootCmd.PersistentFlags().StringVar(&repo, "repo", "", "Specify GitHub repository.")
+	// --repo
+	RootCmd.PersistentFlags().StringVar(&repo, "repo", "", "Specify GitHub repository.")
 
-	// // --commit
-	// RootCmd.PersistentFlags().StringVar(&commit, "commit", "", "Specify Git commit hash.")
+	// --commit
+	RootCmd.PersistentFlags().StringVar(&commit, "commit", "", "Specify Git commit hash.")
+
+	// report --pipeline "code-review"
+	ReportCmd.LocalFlags().StringVar(&reportPipelineName, "pipeline", "", "Returns the list of all pipeline runs for the specified pipeline")
+
+	// report --run 2
+	ReportCmd.LocalFlags().IntVar(&reportRunCounter, "run", 0, "Run number i-th for a specified pipeline name")
 
 	// run
 	RootCmd.AddCommand(RunCmd)

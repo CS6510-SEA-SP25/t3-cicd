@@ -4,6 +4,7 @@ import (
 	"cicd/pipeci/backend/models"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -84,6 +85,49 @@ func (service *PipelineService) UpdatePipelineStatusAndEndTime(pipelineID int, s
 	}
 
 	return nil
+}
+
+// Query pipeline executions by input conditions
+func (service *PipelineService) QueryPipelines(filters map[string]interface{}) ([]models.Pipeline, error) {
+	var pipelines []models.Pipeline
+	query := "SELECT * FROM Pipelines"
+	args := make([]interface{}, 0)
+	conditions := make([]string, 0)
+
+	// Build the conditions
+	for key, value := range filters {
+		conditions = append(conditions, fmt.Sprintf("%s = ?", key))
+		args = append(args, value)
+	}
+
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	// Execute
+	rows, err := service.db.Query(query+" ORDER BY start_time", args...)
+	if err != nil {
+		return nil, fmt.Errorf("QueryPipelines: %v", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var pipeline models.Pipeline
+		if err := rows.Scan(
+			&pipeline.PipelineId, &pipeline.Repository, &pipeline.CommitHash, &pipeline.IPAddress,
+			&pipeline.Name, &pipeline.StageOrder,
+			&pipeline.Status, &pipeline.StartTime, &pipeline.EndTime,
+		); err != nil {
+			return nil, fmt.Errorf("QueryPipelines: %v", err)
+		}
+		pipelines = append(pipelines, pipeline)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("QueryPipelines: %v", err)
+	}
+
+	return pipelines, nil
 }
 
 // Deletes all pipelines with names starting with "test_"

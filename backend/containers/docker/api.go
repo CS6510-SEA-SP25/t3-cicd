@@ -207,7 +207,7 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 
 	// Pipeline execution report
 	var pipelineReport models.Pipeline = models.Pipeline{
-		Repository: repository.Url,
+		Repository: removeTokenFromURL(repository.Url),
 		CommitHash: repository.CommitHash,
 		IPAddress:  "0.0.0.0",
 		Name:       pipeline.Pipeline.Value.Name.Value,
@@ -318,8 +318,12 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 					terminatedJobs = append(terminatedJobs, result.Job.Name.Value)
 					stageHasFailedJobs = true
 					// ! NOTE: If no job's `allow-failure`, update stage & pipeline status before quit
-					stageService.UpdateStageStatusAndEndTime(stageReportId, models.FAILED)
-					pipelineService.UpdatePipelineStatusAndEndTime(pipelineReportId, models.FAILED)
+					if err = stageService.UpdateStageStatusAndEndTime(stageReportId, models.FAILED); err != nil {
+						log.Printf("%v\n", err)
+					}
+					if err = pipelineService.UpdatePipelineStatusAndEndTime(pipelineReportId, models.FAILED); err != nil {
+						log.Printf("%v\n", err)
+					}
 					return result.Err // Return the first error encountered
 				}
 			}
@@ -347,4 +351,15 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 	}
 
 	return nil
+}
+
+// Remove Personal Access Token from URL if exists
+func removeTokenFromURL(url string) string {
+	// Split the URL by "@"
+	parts := strings.Split(url, "@")
+	if len(parts) > 1 {
+		// If there's a token, return the part after "@"
+		return "https://" + parts[1]
+	}
+	return url
 }

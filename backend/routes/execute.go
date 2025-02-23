@@ -25,7 +25,7 @@ func ExecuteLocal(c *gin.Context) {
 
 	err = DockerService.Execute(body.Pipeline, body.Repository)
 	if err != nil {
-		log.Printf("%v", err)
+		log.Printf("ExecuteLocal %v", err)
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false})
 	} else {
 		c.IndentedJSON(http.StatusOK, gin.H{"success": true})

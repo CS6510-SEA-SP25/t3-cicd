@@ -4,9 +4,11 @@ import (
 	"cicd/pipeci/backend/db"
 	"cicd/pipeci/backend/models"
 	"cicd/pipeci/backend/routes"
+	PipelineService "cicd/pipeci/backend/services/pipeline"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -14,6 +16,18 @@ import (
 )
 
 var TEST_PIPELINE_NAME string = "test_pipeline"
+
+func TestMain(m *testing.M) {
+
+	// Run all tests
+	code := m.Run()
+
+	// Teardown code (cleanup logic)
+	cleanup()
+
+	// Exit with the test result code
+	os.Exit(code)
+}
 
 func TestPingRoute(t *testing.T) {
 	router := setupRouter()
@@ -61,7 +75,6 @@ func TestExecuteLocal(t *testing.T) {
 	var repository models.Repository = models.Repository{
 		Url: "https://github.com/CS6510-SEA-SP25/t3-cicd.git", CommitHash: "ae47cc929081a0312a54bf85f3f6c232a912e243",
 	}
-	// // Create an example user for testing
 	var body = routes.ExecuteLocal_RequestBody{
 		Pipeline:   pipeline,
 		Repository: repository,
@@ -121,4 +134,29 @@ func TestExecuteLocalFailed(t *testing.T) {
 
 	assert.Equal(t, 400, w.Code)
 	assert.NoError(t, err)
+}
+
+func TestReportLocal(t *testing.T) {
+	db.Init()
+	router := setupRouter()
+
+	w := httptest.NewRecorder()
+
+	var repository models.Repository = models.Repository{
+		Url: "https://github.com/CS6510-SEA-SP25/t3-cicd.git",
+	}
+	var body = routes.ReportPastExecutionsLocal_RequestBody{
+		Repository: repository,
+		IPAddress:  "0.0.0.0",
+	}
+	jsonBody, _ := json.Marshal(body)
+	req, err := http.NewRequest("POST", "/report/local", strings.NewReader(string(jsonBody)))
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Code)
+	assert.NoError(t, err)
+}
+
+func cleanup() {
+	PipelineService.NewPipelineService(db.Instance).CleanUpTestPipelines()
 }

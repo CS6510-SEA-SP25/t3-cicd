@@ -310,6 +310,123 @@ func TestUpdatePipelineStatusAndEndTime_NoRowsAffectedError(t *testing.T) {
 	}
 }
 
+func TestQueryPipelines_Success(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	service := NewPipelineService(db)
+
+	// Define the filters
+	filters := map[string]interface{}{
+		"repository": "repo1",
+		"status":     models.SUCCESS,
+	}
+
+	// Define the expected rows
+	rows := sqlmock.NewRows([]string{"pipeline_id", "repository", "commit_hash", "ip_address", "name", "stage_order", "status", "start_time", "end_time"}).
+		AddRow(1, "repo1", "abc123", "192.168.1.1", "pipeline1", 1, models.SUCCESS, time.Now(), time.Now()).
+		AddRow(2, "repo1", "def456", "192.168.1.2", "pipeline2", 2, models.SUCCESS, time.Now(), time.Now())
+
+	// Expect the query with the correct filters
+	mock.ExpectQuery("SELECT \\* FROM Pipelines WHERE repository = \\? AND status = \\? ORDER BY start_time").
+		WithArgs("repo1", models.SUCCESS).
+		WillReturnRows(rows)
+
+	// Call the method under test
+	pipelines, err := service.QueryPipelines(filters)
+
+	// Assert that no error occurred
+	assert.NoError(t, err)
+
+	// Assert that the expected pipelines were returned
+	assert.Equal(t, 2, len(pipelines))
+	assert.Equal(t, "repo1", pipelines[0].Repository)
+	assert.Equal(t, models.SUCCESS, pipelines[0].Status)
+	assert.Equal(t, "repo1", pipelines[1].Repository)
+	assert.Equal(t, models.SUCCESS, pipelines[1].Status)
+
+	// Ensure all expectations were met
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestQueryPipelines_NoFilters(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	service := NewPipelineService(db)
+
+	// Define no filters
+	filters := map[string]interface{}{}
+
+	// Define the expected rows
+	rows := sqlmock.NewRows([]string{"pipeline_id", "repository", "commit_hash", "ip_address", "name", "stage_order", "status", "start_time", "end_time"}).
+		AddRow(1, "repo1", "abc123", "192.168.1.1", "pipeline1", 1, models.SUCCESS, time.Now(), time.Now()).
+		AddRow(2, "repo2", "def456", "192.168.1.2", "pipeline2", 2, models.PENDING, time.Now(), time.Now())
+
+	// Expect the query with no filters
+	mock.ExpectQuery("SELECT \\* FROM Pipelines ORDER BY start_time").
+		WillReturnRows(rows)
+
+	// Call the method under test
+	pipelines, err := service.QueryPipelines(filters)
+
+	// Assert that no error occurred
+	assert.NoError(t, err)
+
+	// Assert that the expected pipelines were returned
+	assert.Equal(t, 2, len(pipelines))
+	assert.Equal(t, "repo1", pipelines[0].Repository)
+	assert.Equal(t, "repo2", pipelines[1].Repository)
+
+	// Ensure all expectations were met
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestQueryPipelines_DBError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	service := NewPipelineService(db)
+
+	// Define the filters
+	filters := map[string]interface{}{
+		"repository": "repo1",
+	}
+
+	// Expect the query to return an error
+	mock.ExpectQuery("SELECT \\* FROM Pipelines WHERE repository = \\? ORDER BY start_time").
+		WithArgs("repo1").
+		WillReturnError(fmt.Errorf("database error"))
+
+	// Call the method under test
+	pipelines, err := service.QueryPipelines(filters)
+
+	// Assert that an error occurred
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "QueryPipelines: database error")
+
+	// Assert that no pipelines were returned
+	assert.Nil(t, pipelines)
+
+	// Ensure all expectations were met
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
 func TestCleanUpTestPipelines(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
