@@ -16,10 +16,10 @@ services:
     restart: always
 
   go-backend:
-    # image: minh160302/cicd-api:v0.0.3-patch-1
-    build:
-      context: backend
-      dockerfile: Dockerfile
+    image: minh160302/cicd-api:v0.0.3-patch-2
+    # build:
+    #   context: backend
+    #   dockerfile: Dockerfile
     container_name: cicd-api
     depends_on:
       - mysql
