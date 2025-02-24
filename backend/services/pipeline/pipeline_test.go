@@ -331,7 +331,7 @@ func TestQueryPipelines_Success(t *testing.T) {
 		AddRow(2, "repo1", "def456", "192.168.1.2", "pipeline2", 2, models.SUCCESS, time.Now(), time.Now())
 
 	// Expect the query with the correct filters
-	mock.ExpectQuery("SELECT \\* FROM Pipelines WHERE repository = \\? AND status = \\? ORDER BY start_time").
+	mock.ExpectQuery("SELECT * FROM Pipelines WHERE repository = ? AND status = ? ORDER BY start_time").
 		WithArgs("repo1", models.SUCCESS).
 		WillReturnRows(rows)
 
