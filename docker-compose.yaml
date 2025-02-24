@@ -1,0 +1,43 @@
+version: "3.8"
+services:
+  mysql:
+    image: mysql:latest
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: CicdApplication
+      MYSQL_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - shared-network
+    restart: always
+
+  go-backend:
+    # image: minh160302/cicd-api:v0.0.3-patch-1
+    build:
+      context: backend
+      dockerfile: Dockerfile
+    container_name: cicd-api
+    depends_on:
+      - mysql
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: CicdApplication
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+    ports:
+      - "8080:8080"
+    networks:
+      - shared-network
+    restart: always
+
+networks:
+  shared-network:
+    driver: bridge

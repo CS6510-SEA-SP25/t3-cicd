@@ -121,6 +121,7 @@ jobs:
       DB_DATABASE: CicdApplication
       DB_USER: root
       DB_PASSWORD: root
+      DB_HOST: localhost
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

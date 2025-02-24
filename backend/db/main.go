@@ -12,19 +12,32 @@ import (
 var Instance *sql.DB
 
 func Init() {
+	var host string = os.Getenv("DB_USER")
+	var user string = os.Getenv("DB_HOST")
+	var password string = os.Getenv("DB_PASSWORD")
+
+	if host == "" {
+		host = "localhost"
+	}
+	if user == "" {
+		user = "root"
+	}
+	if password == "" {
+		password = "root"
+	}
+
 	// Capture connection properties.
 	cfg := mysql.Config{
-		// User:   os.Getenv("DBUSER"),
-		User:   "root",
-		Passwd: os.Getenv("DB_PASSWORD"),
-		// Passwd:    "16032002",
+		User:      user,
+		Passwd:    password,
 		Net:       "tcp",
-		Addr:      "0.0.0.0:3306",
+		Addr:      host + ":3306",
 		DBName:    "CicdApplication",
 		ParseTime: true,
 	}
 	// Get a database handle.
 	var err error
+	fmt.Printf("cfg.FormatDSN() %v", cfg.FormatDSN())
 	Instance, err = sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		log.Fatal(err)

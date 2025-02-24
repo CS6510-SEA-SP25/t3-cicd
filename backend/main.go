@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func setupRouter() *gin.Engine {
@@ -41,6 +42,13 @@ func setupRouter() *gin.Engine {
 }
 
 func main() {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Printf("No .env file, use default env variables.")
+	} else {
+		log.Printf("Loading .env file.")
+	}
+
 	db.Init()
 
 	router := setupRouter()
