@@ -1,0 +1,40 @@
+version: v0
+
+# Pipeline info
+pipeline:
+  name: course-wesbite
+
+# List of stages - show order of execution
+stages:
+  - build
+  - test
+  - docs
+
+# Stages defined below
+jobs:
+  # build
+  - name: compile
+    stage: build
+    image: gradle:8.12-jdk21
+    script:
+      - ./gradlew classes
+
+  # test
+  - name: unittests
+    stage: test
+    image: gradle:8.12-jdk21
+    script:
+      - ./gradlew test
+
+  - name: reports
+    stage: test
+    image: gradle:8.12-jdk21
+    script:
+      - ./gradlew check
+
+  # docs
+  - name: javadoc
+    stage: docs
+    image: gradle:8.12-jdk21
+    script:
+      - ./gradlew javadoc
