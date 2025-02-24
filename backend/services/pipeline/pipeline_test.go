@@ -28,7 +28,7 @@ func TestGetPipelines(t *testing.T) {
 		AddRow(2, "repo2", "def456", "192.168.1.2", "pipeline2", 2, models.SUCCESS, time.Now(), time.Now())
 
 	// Expect the query and return the mock rows
-	mock.ExpectQuery("SELECT * FROM Pipelines").WillReturnRows(rows)
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM Pipelines")).WillReturnRows(rows)
 
 	// Call the method under test
 	pipelines, err := service.GetPipelines()
@@ -68,7 +68,7 @@ func TestCreatePipeline(t *testing.T) {
 	}
 
 	// Expect the exec and return a mock result
-	mock.ExpectExec("INSERT INTO Pipelines").
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO Pipelines")).
 		WithArgs(
 			pipeline.Repository,
 			pipeline.CommitHash,
@@ -109,7 +109,7 @@ func TestUpdatePipelineStatusAndEndTime(t *testing.T) {
 	status := models.SUCCESS
 
 	// Expect the exec and return a mock result
-	mock.ExpectExec("UPDATE Pipelines SET status = ?, end_time = ? WHERE pipeline_id = ?").
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE Pipelines SET status = ?, end_time = ? WHERE pipeline_id = ?")).
 		WithArgs(
 			status,
 			sqlmock.AnyArg(), // Use AnyArg for the end_time argument
@@ -145,7 +145,7 @@ func TestUpdatePipelineStatusAndEndTime_NotFound(t *testing.T) {
 	status := models.SUCCESS
 
 	// Expect the exec and return a mock result with no rows affected
-	mock.ExpectExec("UPDATE Pipelines SET status = ?, end_time = ? WHERE pipeline_id = ?").
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE Pipelines SET status = ?, end_time = ? WHERE pipeline_id = ?")).
 		WithArgs(status, sqlmock.AnyArg(), pipelineID).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
@@ -173,7 +173,7 @@ func TestGetPipelines_DBError(t *testing.T) {
 	service := NewPipelineService(db)
 
 	// Expect the query to return an error
-	mock.ExpectQuery("SELECT * FROM Pipelines").
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM Pipelines")).
 		WillReturnError(fmt.Errorf("database error"))
 
 	// Call the method under test
@@ -213,7 +213,7 @@ func TestCreatePipeline_DBError(t *testing.T) {
 	}
 
 	// Expect the exec to return an error
-	mock.ExpectExec("INSERT INTO Pipelines").
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO Pipelines")).
 		WithArgs(
 			pipeline.Repository,
 			pipeline.CommitHash,
@@ -255,7 +255,7 @@ func TestUpdatePipelineStatusAndEndTime_DBError(t *testing.T) {
 	status := models.SUCCESS
 
 	// Expect the exec to return an error
-	mock.ExpectExec("UPDATE Pipelines SET status = ?, end_time = ? WHERE pipeline_id = ?").
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE Pipelines SET status = ?, end_time = ? WHERE pipeline_id = ?")).
 		WithArgs(
 			status,
 			sqlmock.AnyArg(), // Use AnyArg for the end_time argument
@@ -290,7 +290,7 @@ func TestUpdatePipelineStatusAndEndTime_NoRowsAffectedError(t *testing.T) {
 	status := models.SUCCESS
 
 	// Expect the exec to return a result with no rows affected
-	mock.ExpectExec("UPDATE Pipelines SET status = ?, end_time = ? WHERE pipeline_id = ?").
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE Pipelines SET status = ?, end_time = ? WHERE pipeline_id = ?")).
 		WithArgs(
 			status,
 			sqlmock.AnyArg(), // Use AnyArg for the end_time argument
@@ -373,7 +373,7 @@ func TestQueryPipelines_NoFilters(t *testing.T) {
 		AddRow(2, "repo2", "def456", "192.168.1.2", "pipeline2", 2, models.PENDING, time.Now(), time.Now())
 
 	// Expect the query with no filters
-	mock.ExpectQuery("SELECT * FROM Pipelines ORDER BY start_time").
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM Pipelines ORDER BY start_time")).
 		WillReturnRows(rows)
 
 	// Call the method under test
@@ -408,7 +408,7 @@ func TestQueryPipelines_DBError(t *testing.T) {
 	}
 
 	// Expect the query to return an error
-	mock.ExpectQuery("SELECT * FROM Pipelines WHERE repository = ? ORDER BY start_time").
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM Pipelines WHERE repository = ? ORDER BY start_time")).
 		WithArgs("repo1").
 		WillReturnError(fmt.Errorf("database error"))
 
@@ -437,7 +437,7 @@ func TestCleanUpTestPipelines(t *testing.T) {
 	service := NewPipelineService(db)
 
 	// Set up the expectation for the DELETE statement
-	mock.ExpectExec("DELETE FROM Pipelines WHERE name LIKE ?").
+	mock.ExpectExec(regexp.QuoteMeta("DELETE FROM Pipelines WHERE name LIKE ?")).
 		WithArgs("'test%'").
 		WillReturnResult(sqlmock.NewResult(0, 0)) // Rows affected doesn't matter for this test
 
