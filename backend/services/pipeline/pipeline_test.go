@@ -28,7 +28,7 @@ func TestGetPipelines(t *testing.T) {
 		AddRow(2, "repo2", "def456", "192.168.1.2", "pipeline2", 2, models.SUCCESS, time.Now(), time.Now())
 
 	// Expect the query and return the mock rows
-	mock.ExpectQuery("SELECT \\* FROM Pipelines").WillReturnRows(rows)
+	mock.ExpectQuery("SELECT * FROM Pipelines").WillReturnRows(rows)
 
 	// Call the method under test
 	pipelines, err := service.GetPipelines()
@@ -109,7 +109,7 @@ func TestUpdatePipelineStatusAndEndTime(t *testing.T) {
 	status := models.SUCCESS
 
 	// Expect the exec and return a mock result
-	mock.ExpectExec("UPDATE Pipelines SET status = \\?, end_time = \\? WHERE pipeline_id = \\?").
+	mock.ExpectExec("UPDATE Pipelines SET status = ?, end_time = ? WHERE pipeline_id = ?").
 		WithArgs(
 			status,
 			sqlmock.AnyArg(), // Use AnyArg for the end_time argument
@@ -145,7 +145,7 @@ func TestUpdatePipelineStatusAndEndTime_NotFound(t *testing.T) {
 	status := models.SUCCESS
 
 	// Expect the exec and return a mock result with no rows affected
-	mock.ExpectExec("UPDATE Pipelines SET status = \\?, end_time = \\? WHERE pipeline_id = \\?").
+	mock.ExpectExec("UPDATE Pipelines SET status = ?, end_time = ? WHERE pipeline_id = ?").
 		WithArgs(status, sqlmock.AnyArg(), pipelineID).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
@@ -173,7 +173,7 @@ func TestGetPipelines_DBError(t *testing.T) {
 	service := NewPipelineService(db)
 
 	// Expect the query to return an error
-	mock.ExpectQuery("SELECT \\* FROM Pipelines").
+	mock.ExpectQuery("SELECT * FROM Pipelines").
 		WillReturnError(fmt.Errorf("database error"))
 
 	// Call the method under test
@@ -255,7 +255,7 @@ func TestUpdatePipelineStatusAndEndTime_DBError(t *testing.T) {
 	status := models.SUCCESS
 
 	// Expect the exec to return an error
-	mock.ExpectExec("UPDATE Pipelines SET status = \\?, end_time = \\? WHERE pipeline_id = \\?").
+	mock.ExpectExec("UPDATE Pipelines SET status = ?, end_time = ? WHERE pipeline_id = ?").
 		WithArgs(
 			status,
 			sqlmock.AnyArg(), // Use AnyArg for the end_time argument
@@ -290,7 +290,7 @@ func TestUpdatePipelineStatusAndEndTime_NoRowsAffectedError(t *testing.T) {
 	status := models.SUCCESS
 
 	// Expect the exec to return a result with no rows affected
-	mock.ExpectExec("UPDATE Pipelines SET status = \\?, end_time = \\? WHERE pipeline_id = \\?").
+	mock.ExpectExec("UPDATE Pipelines SET status = ?, end_time = ? WHERE pipeline_id = ?").
 		WithArgs(
 			status,
 			sqlmock.AnyArg(), // Use AnyArg for the end_time argument
@@ -332,7 +332,7 @@ func TestQueryPipelines_Success(t *testing.T) {
 		AddRow(2, "repo1", "def456", "192.168.1.2", "pipeline2", 2, models.SUCCESS, time.Now(), time.Now())
 
 	// Expect the query with the correct filters
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT \\* FROM Pipelines WHERE repository = \\? AND status = \\? ORDER BY start_time")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM Pipelines WHERE repository = ? AND status = ? ORDER BY start_time")).
 		WithArgs("repo1", models.SUCCESS).
 		WillReturnRows(rows)
 
@@ -373,7 +373,7 @@ func TestQueryPipelines_NoFilters(t *testing.T) {
 		AddRow(2, "repo2", "def456", "192.168.1.2", "pipeline2", 2, models.PENDING, time.Now(), time.Now())
 
 	// Expect the query with no filters
-	mock.ExpectQuery("SELECT \\* FROM Pipelines ORDER BY start_time").
+	mock.ExpectQuery("SELECT * FROM Pipelines ORDER BY start_time").
 		WillReturnRows(rows)
 
 	// Call the method under test
@@ -408,7 +408,7 @@ func TestQueryPipelines_DBError(t *testing.T) {
 	}
 
 	// Expect the query to return an error
-	mock.ExpectQuery("SELECT \\* FROM Pipelines WHERE repository = \\? ORDER BY start_time").
+	mock.ExpectQuery("SELECT * FROM Pipelines WHERE repository = ? ORDER BY start_time").
 		WithArgs("repo1").
 		WillReturnError(fmt.Errorf("database error"))
 

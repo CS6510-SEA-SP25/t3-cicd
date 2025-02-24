@@ -12,8 +12,8 @@ import (
 var Instance *sql.DB
 
 func Init() {
-	var host string = os.Getenv("DB_USER")
-	var user string = os.Getenv("DB_HOST")
+	var host string = os.Getenv("DB_HOST")
+	var user string = os.Getenv("DB_USER")
 	var password string = os.Getenv("DB_PASSWORD")
 
 	if host == "" {
