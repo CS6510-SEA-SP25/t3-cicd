@@ -54,7 +54,7 @@ jobs:
           go mod tidy
           go run . &
           sleep 3
-          curl http://localhost:8000
+          curl http://localhost:8080
 
       - name: Generate executable
         run: chmod +x coverage.sh
