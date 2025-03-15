@@ -4,6 +4,7 @@
 package models
 
 import (
+	"database/sql"
 	"time"
 )
 
@@ -19,15 +20,15 @@ const (
 
 // Pipeline's execution report
 type Pipeline struct {
-	PipelineId int        `json:"pipeline_id" db:"pipeline_id"`
-	Repository string     `json:"repository" db:"repository"`
-	CommitHash string     `json:"commit_hash" db:"commit_hash"`
-	IPAddress  string     `json:"ip_address" db:"ip_address"`
-	Name       string     `json:"name" db:"name"`
-	StageOrder string     `json:"stage_order" db:"stage_order"`
-	Status     ExecStatus `json:"status" db:"status"`
-	StartTime  time.Time  `json:"start_time" db:"start_time"`
-	EndTime    time.Time  `json:"end_time" db:"end_time"`
+	PipelineId int          `json:"pipeline_id" db:"pipeline_id"`
+	Repository string       `json:"repository" db:"repository"`
+	CommitHash string       `json:"commit_hash" db:"commit_hash"`
+	IPAddress  string       `json:"ip_address" db:"ip_address"`
+	Name       string       `json:"name" db:"name"`
+	StageOrder string       `json:"stage_order" db:"stage_order"`
+	Status     ExecStatus   `json:"status" db:"status"`
+	StartTime  time.Time    `json:"start_time" db:"start_time"`
+	EndTime    sql.NullTime `json:"end_time" db:"end_time"`
 }
 
 // Stage's execution report

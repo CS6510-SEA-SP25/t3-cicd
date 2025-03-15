@@ -2,6 +2,8 @@ package models
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestYAMLFileLocation(t *testing.T) {
@@ -10,13 +12,8 @@ func TestYAMLFileLocation(t *testing.T) {
 		Column: 5,
 	}
 
-	if loc.Line != 10 {
-		t.Errorf("Expected Line to be 10, got %d", loc.Line)
-	}
-
-	if loc.Column != 5 {
-		t.Errorf("Expected Column to be 5, got %d", loc.Column)
-	}
+	assert.Equal(t, 10, loc.Line)
+	assert.Equal(t, 5, loc.Column)
 }
 
 func TestConfigurationNode(t *testing.T) {
@@ -26,13 +23,9 @@ func TestConfigurationNode(t *testing.T) {
 		Location: loc,
 	}
 
-	if node.Value != "test-value" {
-		t.Errorf("Expected Value to be 'test-value', got '%s'", node.Value)
-	}
-
-	if node.Location.Line != 1 || node.Location.Column != 1 {
-		t.Errorf("Expected Location to be {1, 1}, got {%d, %d}", node.Location.Line, node.Location.Column)
-	}
+	assert.Equal(t, "test-value", node.Value)
+	assert.Equal(t, 1, node.Location.Line)
+	assert.Equal(t, 1, node.Location.Column)
 }
 
 func TestJobConfiguration(t *testing.T) {
@@ -45,25 +38,14 @@ func TestJobConfiguration(t *testing.T) {
 		Dependencies: &ConfigurationNode[[]string]{Value: []string{"job2", "job3"}, Location: loc},
 	}
 
-	if job.Name.Value != "job1" {
-		t.Errorf("Expected Name to be 'job1', got '%s'", job.Name.Value)
-	}
-
-	if job.Stage.Value != "build" {
-		t.Errorf("Expected Stage to be 'build', got '%s'", job.Stage.Value)
-	}
-
-	if job.Image.Value != "golang:1.19" {
-		t.Errorf("Expected Image to be 'golang:1.19', got '%s'", job.Image.Value)
-	}
-
-	if len(job.Script.Value) != 1 || job.Script.Value[0] != "echo 'Hello, World!'" {
-		t.Errorf("Expected Script to be ['echo \"Hello, World!\"'], got %v", job.Script.Value)
-	}
-
-	if len(job.Dependencies.Value) != 2 || job.Dependencies.Value[0] != "job2" || job.Dependencies.Value[1] != "job3" {
-		t.Errorf("Expected Dependencies to be ['job2', 'job3'], got %v", job.Dependencies.Value)
-	}
+	assert.Equal(t, "job1", job.Name.Value)
+	assert.Equal(t, "build", job.Stage.Value)
+	assert.Equal(t, "golang:1.19", job.Image.Value)
+	assert.Len(t, job.Script.Value, 1)
+	assert.Equal(t, "echo 'Hello, World!'", job.Script.Value[0])
+	assert.Len(t, job.Dependencies.Value, 2)
+	assert.Equal(t, "job2", job.Dependencies.Value[0])
+	assert.Equal(t, "job3", job.Dependencies.Value[1])
 }
 
 func TestPipelineInfo(t *testing.T) {
@@ -72,9 +54,7 @@ func TestPipelineInfo(t *testing.T) {
 		Name: &ConfigurationNode[string]{Value: "pipeline1", Location: loc},
 	}
 
-	if pipelineInfo.Name.Value != "pipeline1" {
-		t.Errorf("Expected Name to be 'pipeline1', got '%s'", pipelineInfo.Name.Value)
-	}
+	assert.Equal(t, "pipeline1", pipelineInfo.Name.Value)
 }
 
 func TestPipelineConfiguration(t *testing.T) {
@@ -102,25 +82,12 @@ func TestPipelineConfiguration(t *testing.T) {
 		ExecOrder:  map[string][][]string{"build": {{"job1"}}},
 	}
 
-	if pipelineConfig.Version.Value != "v0" {
-		t.Errorf("Expected Version to be 'v0', got '%s'", pipelineConfig.Version.Value)
-	}
-
-	if pipelineConfig.Pipeline.Value.Name.Value != "pipeline1" {
-		t.Errorf("Expected Pipeline Name to be 'pipeline1', got '%s'", pipelineConfig.Pipeline.Value.Name.Value)
-	}
-
-	if len(pipelineConfig.Stages.Value) != 1 {
-		t.Errorf("Expected 1 stage, got %d", len(pipelineConfig.Stages.Value))
-	}
-
-	if pipelineConfig.StageOrder[0] != "build" {
-		t.Errorf("Expected StageOrder to be ['build'], got %v", pipelineConfig.StageOrder)
-	}
-
-	if len(pipelineConfig.ExecOrder["build"]) != 1 || pipelineConfig.ExecOrder["build"][0][0] != "job1" {
-		t.Errorf("Expected ExecOrder to be map[build:[[job1]]], got %v", pipelineConfig.ExecOrder)
-	}
+	assert.Equal(t, "v0", pipelineConfig.Version.Value)
+	assert.Equal(t, "pipeline1", pipelineConfig.Pipeline.Value.Name.Value)
+	assert.Len(t, pipelineConfig.Stages.Value, 1)
+	assert.Equal(t, []string{"build"}, pipelineConfig.StageOrder)
+	assert.Len(t, pipelineConfig.ExecOrder["build"], 1)
+	assert.Equal(t, []string{"job1"}, pipelineConfig.ExecOrder["build"][0])
 }
 
 func TestRepository(t *testing.T) {
@@ -129,11 +96,6 @@ func TestRepository(t *testing.T) {
 		CommitHash: "abc123",
 	}
 
-	if repo.Url != "https://github.com/example/repo.git" {
-		t.Errorf("Expected Url to be 'https://github.com/example/repo.git', got '%s'", repo.Url)
-	}
-
-	if repo.CommitHash != "abc123" {
-		t.Errorf("Expected CommitHash to be 'abc123', got '%s'", repo.CommitHash)
-	}
+	assert.Equal(t, "https://github.com/example/repo.git", repo.Url)
+	assert.Equal(t, "abc123", repo.CommitHash)
 }

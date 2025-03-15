@@ -438,7 +438,7 @@ func TestCleanUpTestPipelines(t *testing.T) {
 
 	// Set up the expectation for the DELETE statement
 	mock.ExpectExec(regexp.QuoteMeta("DELETE FROM Pipelines WHERE name LIKE ?")).
-		WithArgs("'test%'").
+		WithArgs("test_%").
 		WillReturnResult(sqlmock.NewResult(0, 0)) // Rows affected doesn't matter for this test
 
 	// Call the function under test

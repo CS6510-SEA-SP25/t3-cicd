@@ -219,3 +219,110 @@ func TestExecuteFailed(t *testing.T) {
 	}
 	assert.Error(t, err) // Expect no error
 }
+
+func TestExecuteFailed_InvalidCommand(t *testing.T) {
+	db.Init()
+	dc, err := InitDockerClient()
+	assert.NoError(t, err)
+	defer dc.Close()
+
+	var pipeline models.PipelineConfiguration = models.PipelineConfiguration{
+		Pipeline: &models.ConfigurationNode[models.PipelineInfo]{
+			Value: models.PipelineInfo{Name: &models.ConfigurationNode[string]{Value: TEST_PIPELINE_NAME}},
+		},
+		Version:    &models.ConfigurationNode[string]{Value: "v0"},
+		StageOrder: []string{"build"},
+		Stages: &models.ConfigurationNode[map[string]*models.ConfigurationNode[map[string]*models.JobConfiguration]]{
+			Value: map[string]*models.ConfigurationNode[map[string]*models.JobConfiguration]{
+				"build": {
+					Value: map[string]*models.JobConfiguration{
+						"compile": {
+							Name:  &models.ConfigurationNode[string]{Value: "compile"},
+							Stage: &models.ConfigurationNode[string]{Value: "build"},
+							Image: &models.ConfigurationNode[string]{Value: "maven"},
+							Script: &models.ConfigurationNode[[]string]{
+								Value: []string{"ls -la", "invalid command"},
+							},
+						},
+					},
+				},
+			},
+		},
+		ExecOrder: map[string][][]string{
+			"build": {{"compile"}},
+		},
+	}
+
+	err = Execute(pipeline, models.Repository{})
+	if err == nil {
+		t.Errorf("expected an error but got none")
+	} else {
+		if !strings.Contains(err.Error(), "terminating pipeline execution, caused by failure in running job") {
+			t.Errorf("unexpected error message: %v", err)
+		}
+	}
+	assert.Error(t, err) // Expect no error
+}
+
+func TestExecuteFailed_TerminatedJobs(t *testing.T) {
+	db.Init()
+	dc, err := InitDockerClient()
+	assert.NoError(t, err)
+	defer dc.Close()
+
+	var pipeline models.PipelineConfiguration = models.PipelineConfiguration{
+		Pipeline: &models.ConfigurationNode[models.PipelineInfo]{
+			Value: models.PipelineInfo{Name: &models.ConfigurationNode[string]{Value: TEST_PIPELINE_NAME}},
+		},
+		Version:    &models.ConfigurationNode[string]{Value: "v0"},
+		StageOrder: []string{"build"},
+		Stages: &models.ConfigurationNode[map[string]*models.ConfigurationNode[map[string]*models.JobConfiguration]]{
+			Value: map[string]*models.ConfigurationNode[map[string]*models.JobConfiguration]{
+				"build": {
+					Value: map[string]*models.JobConfiguration{
+						"compile": {
+							Name:  &models.ConfigurationNode[string]{Value: "compile"},
+							Stage: &models.ConfigurationNode[string]{Value: "build"},
+							Image: &models.ConfigurationNode[string]{Value: "maven"},
+							Script: &models.ConfigurationNode[[]string]{
+								Value: []string{"ls -la", "invalid command"},
+							},
+						},
+						"depends_on_compile": {
+							Name:  &models.ConfigurationNode[string]{Value: "compile"},
+							Stage: &models.ConfigurationNode[string]{Value: "build"},
+							Image: &models.ConfigurationNode[string]{Value: "maven"},
+							Script: &models.ConfigurationNode[[]string]{
+								Value: []string{"ls -la"},
+							},
+							Dependencies: &models.ConfigurationNode[[]string]{
+								Value: []string{"compile"},
+							},
+						},
+						"not_depends_on_compile": {
+							Name:  &models.ConfigurationNode[string]{Value: "compile"},
+							Stage: &models.ConfigurationNode[string]{Value: "build"},
+							Image: &models.ConfigurationNode[string]{Value: "maven"},
+							Script: &models.ConfigurationNode[[]string]{
+								Value: []string{"ls -la"},
+							},
+						},
+					},
+				},
+			},
+		},
+		ExecOrder: map[string][][]string{
+			"build": {{"compile"}},
+		},
+	}
+
+	err = Execute(pipeline, models.Repository{})
+	if err == nil {
+		t.Errorf("expected an error but got none")
+	} else {
+		if !strings.Contains(err.Error(), "terminating pipeline execution, caused by failure in running job") {
+			t.Errorf("unexpected error message: %v", err)
+		}
+	}
+	assert.Error(t, err) // Expect no error
+}
