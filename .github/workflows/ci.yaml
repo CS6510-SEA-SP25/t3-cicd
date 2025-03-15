@@ -25,6 +25,11 @@ jobs:
     if: github.event.pull_request.draft == false # Skip CI for draft PRs
     name: CLI - Test and Coverage
     runs-on: ubuntu-latest
+    env:
+      DB_DATABASE: CicdApplication
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_HOST: localhost
     defaults:
       run:
         shell: bash
@@ -32,6 +37,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Set up MySQL
+        run: |
+          sudo systemctl start mysql
+          mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
+      - name: Run local api for CLI testing
+        run: |
+          cd ../backend
+          go mod tidy
+          go run . &
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
