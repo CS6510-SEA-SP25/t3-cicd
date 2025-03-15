@@ -46,6 +46,7 @@ jobs:
           cd ../backend
           go mod tidy
           go run . &
+          cd ../CLI
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
