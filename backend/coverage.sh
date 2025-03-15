@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -x
 
 # export DB_PASSWORD=16032002
 
