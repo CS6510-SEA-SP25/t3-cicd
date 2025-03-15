@@ -33,7 +33,7 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: .
+        working-directory: ./CLI
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -47,13 +47,12 @@ jobs:
           mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
       - name: Apply SQL File
         working-directory: ./backend # Change if your SQL file is elsewhere
-        run: ls && mysql -u root -p"${{ env.DB_PASSWORD }}" ${{ env.DB_DATABASE }} < ./backend/db/init.sql
+        run: ls && mysql -u root -p"${{ env.DB_PASSWORD }}" ${{ env.DB_DATABASE }} < ./db/init.sql
       - name: Run local api for CLI testing
+        working-directory: ./backend
         run: |
-          cd backend
           go mod tidy
           go run . &
-          cd ../CLI
       - name: Generate executable
         run: chmod +x coverage.sh
       - name: Install dependecies
