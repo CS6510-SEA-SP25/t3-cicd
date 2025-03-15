@@ -53,6 +53,9 @@ jobs:
         run: |
           go mod tidy
           go run . &
+          sleep 3
+          curl http://localhost:8000
+
       - name: Generate executable
         run: chmod +x coverage.sh
       - name: Install dependecies
