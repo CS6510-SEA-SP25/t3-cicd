@@ -52,8 +52,13 @@ jobs:
         working-directory: ./backend
         run: |
           go mod tidy
-          go run . &
-          sleep 3
+          nohup go run . &  # Run the Go application in the background
+          # Wait until the server is ready to accept requests
+          until curl -s http://localhost:8080 > /dev/null; do
+            echo "Waiting for server to start..."
+            sleep 1  # Wait for 1 second before trying again
+          done
+          echo "Server is up, making the request..."
           curl http://localhost:8080
 
       - name: Generate executable
