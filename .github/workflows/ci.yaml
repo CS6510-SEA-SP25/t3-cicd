@@ -47,7 +47,7 @@ jobs:
           mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
       - name: Apply SQL File
         working-directory: ./backend # Change if your SQL file is elsewhere
-        run: mysql -u root -p"${{ env.DB_PASSWORD }}" ${{ env.DB_DATABASE }} < ./backend/db/init.sql
+        run: ls && mysql -u root -p"${{ env.DB_PASSWORD }}" ${{ env.DB_DATABASE }} < ./backend/db/init.sql
       - name: Run local api for CLI testing
         run: |
           cd backend
