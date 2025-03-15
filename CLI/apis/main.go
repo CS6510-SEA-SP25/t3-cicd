@@ -6,7 +6,11 @@ import (
 	"log"
 )
 
+// localhost
 var BASE_URL string = "http://localhost:8080"
+
+// minikube
+// var BASE_URL string = "http://127.0.0.1:63723"
 
 type ExecuteLocal_RequestBody struct {
 	Pipeline   schema.PipelineConfiguration `json:"pipeline"`
