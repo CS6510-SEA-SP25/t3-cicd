@@ -51,6 +51,15 @@ func PostRequest(url string, requestBody interface{}) (interface{}, error) {
 	}
 	defer response.Body.Close()
 
+	// Process status code
+	if response.StatusCode == http.StatusBadRequest {
+		return nil, fmt.Errorf("PostRequest bad request: %#v", response.Body)
+	}
+	if response.StatusCode == http.StatusInternalServerError {
+		return nil, fmt.Errorf("PostRequest internal server error: %#v", response.Body)
+	}
+
+	// Process response body
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
