@@ -30,27 +30,30 @@ jobs:
       DB_USER: root
       DB_PASSWORD: root
       DB_HOST: localhost
-    defaults:
-      run:
-        shell: bash
-        working-directory: ./CLI
+    # defaults:
+    #   run:
+    #     shell: bash
+    #     working-directory: ./CLI
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Set up MySQL
-        run: |
-          sudo systemctl start mysql
-          mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
-      - name: Run local api for CLI testing
-        run: |
-          cd ../backend
-          go mod tidy
-          go run . &
-          cd ../CLI
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+      - name: Set up MySQL
+        run: |
+          sudo systemctl start mysql
+          mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
+      - name: Apply SQL File
+        working-directory: ./backend # Change if your SQL file is elsewhere
+        run: mysql -u root -p"${{ env.DB_PASSWORD }}" ${{ env.DB_DATABASE }} < ./backend/db/init.sql
+      - name: Run local api for CLI testing
+        run: |
+          cd backend
+          go mod tidy
+          go run . &
+          cd ../CLI
       - name: Generate executable
         run: chmod +x coverage.sh
       - name: Install dependecies
