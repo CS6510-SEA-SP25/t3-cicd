@@ -83,6 +83,11 @@ jobs:
         with:
           name: CLI_TestReports
           path: ./CLI/reports/*
+      - name: Upload server.log
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend_TestReports
+          path: ./server.log
 
   cli-build:
     needs: cli-test
