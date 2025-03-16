@@ -25,6 +25,12 @@ jobs:
     if: github.event.pull_request.draft == false # Skip CI for draft PRs
     name: CLI - Test and Coverage
     runs-on: ubuntu-latest
+    env:
+      DB_DATABASE: CicdApplication
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_HOST: localhost
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     defaults:
       run:
         shell: bash
@@ -32,16 +38,44 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0  # Ensure full history is available
+      - name: Verify Git commit
+        run: git rev-parse HEAD
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+      - name: Set up MySQL
+        run: |
+          sudo systemctl start mysql
+          mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
+      - name: Apply SQL File
+        working-directory: ./backend # Change if your SQL file is elsewhere
+        run: ls && mysql -u root -p"${{ env.DB_PASSWORD }}" ${{ env.DB_DATABASE }} < ./db/init.sql
+
+      - name: Run local api for CLI testing
+        working-directory: ./backend
+        run: |
+          go mod tidy
+          nohup go run . > ../server.log 2>&1 &  # Run the Go application in the background
+          # Wait until the server is ready to accept requests
+          until curl -s http://localhost:8080 > /dev/null; do
+            echo "Waiting for server to start..."
+            sleep 1  # Wait for 1 second before trying again
+          done
+          echo "Server is up, making the request..."
+          curl http://localhost:8080
+
       - name: Generate executable
         run: chmod +x coverage.sh
       - name: Install dependecies
         run: go mod tidy
       - name: Run Tests
         run: go test ./... -coverprofile=./cover.out
+      - name: Get Docker logs
+        run: docker ps -aq | xargs -I {} docker logs {}
       - name: Generate coverage report
         run: ./coverage.sh > ./reports/test-summary.txt
       ####

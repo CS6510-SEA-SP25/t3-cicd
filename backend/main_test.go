@@ -6,6 +6,7 @@ import (
 	"cicd/pipeci/backend/routes"
 	PipelineService "cicd/pipeci/backend/services/pipeline"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,12 +19,14 @@ import (
 var TEST_PIPELINE_NAME string = "test_pipeline"
 
 func TestMain(m *testing.M) {
+	// Setup before tests run
+	fmt.Println("Setup: Preparing for tests")
 
 	// Run all tests
 	code := m.Run()
 
 	// Teardown code (cleanup logic)
-	cleanup()
+	// cleanup()
 
 	// Exit with the test result code
 	os.Exit(code)
@@ -87,7 +90,7 @@ func TestExecuteLocal(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestExecuteLocalFailed(t *testing.T) {
+func TestExecuteLocalFailed_InvalidImage(t *testing.T) {
 	db.Init()
 	router := setupRouter()
 
@@ -136,6 +139,55 @@ func TestExecuteLocalFailed(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestExecuteLocalFailed(t *testing.T) {
+	db.Init()
+	router := setupRouter()
+
+	w := httptest.NewRecorder()
+
+	var pipeline models.PipelineConfiguration = models.PipelineConfiguration{
+		Pipeline: &models.ConfigurationNode[models.PipelineInfo]{
+			Value: models.PipelineInfo{Name: &models.ConfigurationNode[string]{Value: TEST_PIPELINE_NAME}},
+		},
+		Version:    &models.ConfigurationNode[string]{Value: "v0"},
+		StageOrder: []string{"build"},
+		Stages: &models.ConfigurationNode[map[string]*models.ConfigurationNode[map[string]*models.JobConfiguration]]{
+			Value: map[string]*models.ConfigurationNode[map[string]*models.JobConfiguration]{
+				"build": {
+					Value: map[string]*models.JobConfiguration{
+						"compile": {
+							Name:  &models.ConfigurationNode[string]{Value: "compile"},
+							Stage: &models.ConfigurationNode[string]{Value: "build"},
+							Image: &models.ConfigurationNode[string]{Value: "maven"},
+							Script: &models.ConfigurationNode[[]string]{
+								Value: []string{"ls -la", "invalid command"},
+							},
+						},
+					},
+				},
+			},
+		},
+		ExecOrder: map[string][][]string{
+			"build": {{"compile"}},
+		},
+	}
+
+	var repository models.Repository = models.Repository{
+		Url: "https://github.com/CS6510-SEA-SP25/t3-cicd.git", CommitHash: "ae47cc929081a0312a54bf85f3f6c232a912e243",
+	}
+	// // Create an example user for testing
+	var body = routes.ExecuteLocal_RequestBody{
+		Pipeline:   pipeline,
+		Repository: repository,
+	}
+	jsonBody, _ := json.Marshal(body)
+	req, err := http.NewRequest("POST", "/execute/local", strings.NewReader(string(jsonBody)))
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 400, w.Code)
+	assert.NoError(t, err)
+}
+
 func TestReportLocal(t *testing.T) {
 	db.Init()
 	router := setupRouter()
@@ -145,7 +197,7 @@ func TestReportLocal(t *testing.T) {
 	var repository models.Repository = models.Repository{
 		Url: "https://github.com/CS6510-SEA-SP25/t3-cicd.git",
 	}
-	var body = routes.ReportPastExecutionsLocal_RequestBody{
+	var body = routes.ReportPastExecutionsLocal_CurrentRepo_RequestBody{
 		Repository: repository,
 		IPAddress:  "0.0.0.0",
 	}
@@ -157,16 +209,16 @@ func TestReportLocal(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestQueryPastExecutionsLocal(t *testing.T) {
+func TestReportPastExecutionsLocal_ByCondition(t *testing.T) {
 	db.Init()
 	router := setupRouter()
 
 	w := httptest.NewRecorder()
 
 	var repository models.Repository = models.Repository{
-		Url:        "https://github.com/CS6510-SEA-SP25/t3-cicd.git",
+		Url: "https://github.com/CS6510-SEA-SP25/t3-cicd.git",
 	}
-	var body = routes.ReportPastExecutionsLocal_RequestBody{
+	var body = routes.ReportPastExecutionsLocal_CurrentRepo_RequestBody{
 		Repository:   repository,
 		IPAddress:    "0.0.0.0",
 		PipelineName: "name",

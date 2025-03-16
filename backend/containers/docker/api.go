@@ -117,6 +117,22 @@ func (dc *DockerClient) WaitContainer(containerId string) error {
 	}
 }
 
+/* Retrieve container logs */
+// func (dc *DockerClient) GetContainerLogs(containerID string) error {
+// 	out, err := dc.cli.ContainerLogs(dc.ctx, containerID, container.LogsOptions{
+// 		ShowStdout: true,
+// 		ShowStderr: true,
+// 		Follow:     false,
+// 		Timestamps: false,
+// 	})
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer out.Close()
+// 	_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+// 	return err
+// }
+
 // Actions on Docker
 func initContainer(job models.JobConfiguration, repository models.Repository) (string, error) {
 	log.Printf("Running stage `%v`, job: `%v`", job.Stage.Value, job.Name.Value)
@@ -141,6 +157,8 @@ func initContainer(job models.JobConfiguration, repository models.Repository) (s
 	cmds = append(cmds, "git checkout "+repository.CommitHash)
 	cmds = append(cmds, job.Script.Value...)
 
+	log.Printf("repository.CommitHash %v", repository.CommitHash)
+
 	// Create container with image and commands to run at start
 	containerId, err := dc.CreateContainer(containerName, job.Image.Value, cmds)
 	if err != nil {
@@ -153,14 +171,19 @@ func initContainer(job models.JobConfiguration, repository models.Repository) (s
 		return containerId, err
 	}
 
+	// // Stream logs to stdout in a goroutine
+	// go func() {
+	// 	err := dc.GetContainerLogs(containerId)
+	// 	if err != nil {
+	// 		fmt.Printf("Failed to stream container logs: %v\n", err)
+	// 	}
+	// }()
+
 	// Wait for completion
 	if err := dc.WaitContainer(containerId); err != nil {
 		return containerId, err
 	}
 
-	// if err := dc.GetContainerLogs(containerId); err != nil {
-	// 	return err
-	// }
 	log.Printf("Execution done for Container Id %v", containerId)
 	return containerId, nil
 }
@@ -217,6 +240,7 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 	}
 	var pipelineReportId, err = pipelineService.CreatePipeline(pipelineReport)
 	if err != nil {
+		// log.Println("debug 220")
 		return err
 	}
 
@@ -233,6 +257,7 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 		}
 		var stageReportId, err = stageService.CreateStage(stageReport)
 		if err != nil {
+			// log.Println("debug 237")
 			return err
 		}
 
@@ -325,6 +350,7 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 					if err = pipelineService.UpdatePipelineStatusAndEndTime(pipelineReportId, models.FAILED); err != nil {
 						log.Printf("%v\n", err)
 					}
+					// log.Println("debug 330")
 					return result.Err // Return the first error encountered
 				}
 			}
@@ -351,6 +377,7 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 		pipelineService.UpdatePipelineStatusAndEndTime(pipelineReportId, models.SUCCESS)
 	}
 
+	// log.Println("debug 357")
 	return nil
 }
 

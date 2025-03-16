@@ -343,10 +343,9 @@ var ReportCmd = &cobra.Command{
 
 			// Show summary all past pipeline runs for the local repository if no pipeline name specified
 			if reportPipelineName == "" {
-				err = apis.ReportPastExecutionsLocal(repository)
+				err = apis.ReportPastExecutionsLocal_CurrentRepo(repository)
 			} else {
-				// log.Printf("kkkkkkkkkkk %v", reportPipelineName)
-				err = apis.QueryPastExectionsLocal(repository, reportPipelineName)
+				err = apis.ReportPastExecutionsLocal_ByCondition(repository, reportPipelineName)
 			}
 		}
 

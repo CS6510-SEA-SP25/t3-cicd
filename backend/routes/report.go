@@ -10,15 +10,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type ReportPastExecutionsLocal_RequestBody struct {
+type ReportPastExecutionsLocal_CurrentRepo_RequestBody struct {
 	Repository   models.Repository `json:"repository"`
 	IPAddress    string            `json:"ip_address"`
 	PipelineName string            `json:"pipeline_name"`
 }
 
 /* Report all local pipeline executions */
-func ReportPastExecutionsLocal(c *gin.Context) {
-	var body ReportPastExecutionsLocal_RequestBody
+func ReportPastExecutionsLocal_CurrentRepo(c *gin.Context) {
+	var body ReportPastExecutionsLocal_CurrentRepo_RequestBody
 	err := c.ShouldBindJSON(&body)
 	if err != nil {
 		return
@@ -35,7 +35,7 @@ func ReportPastExecutionsLocal(c *gin.Context) {
 	pipelines, err := pipelineService.QueryPipelines(filters)
 
 	if err != nil {
-		log.Printf("ReportPastExecutionsLocal %v", err)
+		log.Printf("ReportPastExecutionsLocal_CurrentRepo %v", err)
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false})
 	} else {
 		c.IndentedJSON(http.StatusOK, pipelines)
@@ -44,8 +44,8 @@ func ReportPastExecutionsLocal(c *gin.Context) {
 }
 
 /* Query local pipeline executions by conditions */
-func QueryPastExecutionsLocal(c *gin.Context) {
-	var body ReportPastExecutionsLocal_RequestBody
+func ReportPastExecutionsLocal_ByCondition(c *gin.Context) {
+	var body ReportPastExecutionsLocal_CurrentRepo_RequestBody
 	err := c.ShouldBindJSON(&body)
 	if err != nil {
 		return
@@ -65,7 +65,7 @@ func QueryPastExecutionsLocal(c *gin.Context) {
 	pipelines, err := pipelineService.QueryPipelines(filters)
 
 	if err != nil {
-		log.Printf("ReportPastExecutionsLocal %v", err)
+		log.Printf("ReportPastExecutionsLocal_ByCondition %v", err)
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false})
 	} else {
 		c.IndentedJSON(http.StatusOK, pipelines)
