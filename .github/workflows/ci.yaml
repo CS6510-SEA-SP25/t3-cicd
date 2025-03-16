@@ -52,7 +52,7 @@ jobs:
         working-directory: ./backend
         run: |
           go mod tidy
-          nohup go run . > ./backend/server.log 2>&1 &  # Run the Go application in the background
+          nohup go run . > ../server.log 2>&1 &  # Run the Go application in the background
           # Wait until the server is ready to accept requests
           until curl -s http://localhost:8080 > /dev/null; do
             echo "Waiting for server to start..."
@@ -70,7 +70,7 @@ jobs:
           # Ensure the script stops on the first failure
           set -e
           go test ./... -coverprofile=./cover.out
-          tail -n 20 ./backend/server.log
+          tail -n 20 ../server.log
       - name: Generate coverage report
         run: ./coverage.sh > ./reports/test-summary.txt
       ####
