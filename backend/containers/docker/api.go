@@ -159,6 +159,8 @@ func initContainer(job models.JobConfiguration, repository models.Repository) (s
 	cmds = append(cmds, "git checkout "+repository.CommitHash)
 	cmds = append(cmds, job.Script.Value...)
 
+	log.Printf("repository.CommitHash %v", repository.CommitHash)
+
 	// Create container with image and commands to run at start
 	containerId, err := dc.CreateContainer(containerName, job.Image.Value, cmds)
 	if err != nil {
@@ -171,13 +173,13 @@ func initContainer(job models.JobConfiguration, repository models.Repository) (s
 		return containerId, err
 	}
 
-	// Stream logs to stdout in a goroutine
-	go func() {
-		err := dc.GetContainerLogs(containerId)
-		if err != nil {
-			fmt.Printf("Failed to stream container logs: %v\n", err)
-		}
-	}()
+	// // Stream logs to stdout in a goroutine
+	// go func() {
+	// 	err := dc.GetContainerLogs(containerId)
+	// 	if err != nil {
+	// 		fmt.Printf("Failed to stream container logs: %v\n", err)
+	// 	}
+	// }()
 
 	// Wait for completion
 	if err := dc.WaitContainer(containerId); err != nil {
