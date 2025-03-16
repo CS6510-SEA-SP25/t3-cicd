@@ -51,7 +51,6 @@ jobs:
 
       - name: Run local api for CLI testing
         working-directory: ./backend
-        allow-failures: true
         run: |
           go mod tidy
           nohup go run . > ../server.log 2>&1 &  # Run the Go application in the background
