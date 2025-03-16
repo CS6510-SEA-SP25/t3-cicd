@@ -141,6 +141,9 @@ func initContainer(job models.JobConfiguration, repository models.Repository) (s
 	cmds = append(cmds, "git checkout "+repository.CommitHash)
 	cmds = append(cmds, job.Script.Value...)
 
+	log.Printf("repository.Url %v", repository.Url)
+	log.Printf("repository.CommitHash %v", repository.CommitHash)
+
 	// Create container with image and commands to run at start
 	containerId, err := dc.CreateContainer(containerName, job.Image.Value, cmds)
 	if err != nil {
