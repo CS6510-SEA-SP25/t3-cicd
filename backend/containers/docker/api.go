@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -20,7 +19,6 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
 )
 
 // Docker Client
@@ -120,20 +118,20 @@ func (dc *DockerClient) WaitContainer(containerId string) error {
 }
 
 /* Retrieve container logs */
-func (dc *DockerClient) GetContainerLogs(containerID string) error {
-	out, err := dc.cli.ContainerLogs(dc.ctx, containerID, container.LogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-		Follow:     false,
-		Timestamps: false,
-	})
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, out)
-	return err
-}
+// func (dc *DockerClient) GetContainerLogs(containerID string) error {
+// 	out, err := dc.cli.ContainerLogs(dc.ctx, containerID, container.LogsOptions{
+// 		ShowStdout: true,
+// 		ShowStderr: true,
+// 		Follow:     false,
+// 		Timestamps: false,
+// 	})
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer out.Close()
+// 	_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+// 	return err
+// }
 
 // Actions on Docker
 func initContainer(job models.JobConfiguration, repository models.Repository) (string, error) {
@@ -186,9 +184,6 @@ func initContainer(job models.JobConfiguration, repository models.Repository) (s
 		return containerId, err
 	}
 
-	// if err := dc.GetContainerLogs(containerId); err != nil {
-	// 	return containerId, err
-	// }
 	log.Printf("Execution done for Container Id %v", containerId)
 	return containerId, nil
 }
@@ -245,7 +240,7 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 	}
 	var pipelineReportId, err = pipelineService.CreatePipeline(pipelineReport)
 	if err != nil {
-		log.Println("debug 220")
+		// log.Println("debug 220")
 		return err
 	}
 
@@ -262,7 +257,7 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 		}
 		var stageReportId, err = stageService.CreateStage(stageReport)
 		if err != nil {
-			log.Println("debug 237")
+			// log.Println("debug 237")
 			return err
 		}
 
@@ -355,7 +350,7 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 					if err = pipelineService.UpdatePipelineStatusAndEndTime(pipelineReportId, models.FAILED); err != nil {
 						log.Printf("%v\n", err)
 					}
-					log.Println("debug 330")
+					// log.Println("debug 330")
 					return result.Err // Return the first error encountered
 				}
 			}
@@ -382,7 +377,7 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 		pipelineService.UpdatePipelineStatusAndEndTime(pipelineReportId, models.SUCCESS)
 	}
 
-	log.Println("debug 357")
+	// log.Println("debug 357")
 	return nil
 }
 
