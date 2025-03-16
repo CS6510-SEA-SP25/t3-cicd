@@ -38,6 +38,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0  # Ensure full history is available
+      - name: Verify Git commit
+        run: git rev-parse HEAD
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
