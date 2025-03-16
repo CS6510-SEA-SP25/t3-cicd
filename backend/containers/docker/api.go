@@ -217,7 +217,7 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 	}
 	var pipelineReportId, err = pipelineService.CreatePipeline(pipelineReport)
 	if err != nil {
-		log.Println("debug 220");
+		log.Println("debug 220")
 		return err
 	}
 
@@ -234,7 +234,7 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 		}
 		var stageReportId, err = stageService.CreateStage(stageReport)
 		if err != nil {
-			log.Println("debug 237");
+			log.Println("debug 237")
 			return err
 		}
 
@@ -327,7 +327,7 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 					if err = pipelineService.UpdatePipelineStatusAndEndTime(pipelineReportId, models.FAILED); err != nil {
 						log.Printf("%v\n", err)
 					}
-					log.Println("debug 330");
+					log.Println("debug 330")
 					return result.Err // Return the first error encountered
 				}
 			}
@@ -354,7 +354,7 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 		pipelineService.UpdatePipelineStatusAndEndTime(pipelineReportId, models.SUCCESS)
 	}
 
-	log.Println("debug 357");
+	log.Println("debug 357")
 	return nil
 }
 
