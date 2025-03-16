@@ -72,9 +72,11 @@ jobs:
         run: |
           # Ensure the script stops on the first failure
           set -e
-          go test ./... -coverprofile=./cover.out          
+          go test ./... -coverprofile=./cover.out
       - name: Get server logs
         run: tail -n 20 ../server.log
+      - name: Get Docker logs
+        run: docker ps -aq | xargs -I {} docker logs {}
       - name: Generate coverage report
         run: ./coverage.sh > ./reports/test-summary.txt
       ####
@@ -83,11 +85,6 @@ jobs:
         with:
           name: CLI_TestReports
           path: ./CLI/reports/*
-      - name: Upload server.log
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend_TestReports
-          path: ./server.log
 
   cli-build:
     needs: cli-test
