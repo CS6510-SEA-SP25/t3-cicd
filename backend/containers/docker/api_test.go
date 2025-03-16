@@ -3,17 +3,33 @@ package DockerService
 import (
 	"cicd/pipeci/backend/db"
 	"cicd/pipeci/backend/models"
+	"cicd/pipeci/backend/storage"
 	"fmt"
+	"log"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 )
 
 var TEST_PIPELINE_NAME string = "test_pipeline"
 var TEST_PIPELINE_PREFIX string = "test_"
+
+// Load .env before running tests
+func TestMain(m *testing.M) {
+	if err := godotenv.Load("../../.env"); err != nil {
+		log.Fatal("Failed to load .env file. Ensure the file exists.")
+	}
+
+	log.Println(".env file loaded successfully")
+
+	// Run tests
+	os.Exit(m.Run())
+}
 
 // Test initializing the Docker client
 func TestInitDockerClient(t *testing.T) {
@@ -134,6 +150,7 @@ func cleanUpAfterTest(dc *DockerClient) error {
 // Test initContainer
 func TestExecute(t *testing.T) {
 	db.Init()
+	storage.Init()
 	dc, err := InitDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()
@@ -178,6 +195,7 @@ func TestExecute(t *testing.T) {
 // Test job execution failed
 func TestExecuteFailed(t *testing.T) {
 	db.Init()
+	storage.Init()
 	dc, err := InitDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()
@@ -222,6 +240,7 @@ func TestExecuteFailed(t *testing.T) {
 
 func TestExecuteFailed_InvalidCommand(t *testing.T) {
 	db.Init()
+	storage.Init()
 	dc, err := InitDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()
@@ -266,6 +285,7 @@ func TestExecuteFailed_InvalidCommand(t *testing.T) {
 
 func TestExecuteFailed_TerminatedJobs(t *testing.T) {
 	db.Init()
+	storage.Init()
 	dc, err := InitDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()

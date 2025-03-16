@@ -5,31 +5,31 @@ import (
 	"cicd/pipeci/backend/models"
 	"cicd/pipeci/backend/routes"
 	PipelineService "cicd/pipeci/backend/services/pipeline"
+	"cicd/pipeci/backend/storage"
 	"encoding/json"
-	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 )
 
 var TEST_PIPELINE_NAME string = "test_pipeline"
 
+// Load .env before running tests
 func TestMain(m *testing.M) {
-	// Setup before tests run
-	fmt.Println("Setup: Preparing for tests")
+	if err := godotenv.Load(".env"); err != nil {
+		log.Fatal("Failed to load .env file. Ensure the file exists.")
+	}
 
-	// Run all tests
-	code := m.Run()
+	log.Println(".env file loaded successfully")
 
-	// Teardown code (cleanup logic)
-	// cleanup()
-
-	// Exit with the test result code
-	os.Exit(code)
+	// Run tests
+	os.Exit(m.Run())
 }
 
 func TestPingRoute(t *testing.T) {
@@ -44,6 +44,7 @@ func TestPingRoute(t *testing.T) {
 
 func TestExecuteLocal(t *testing.T) {
 	db.Init()
+	storage.Init()
 	router := setupRouter()
 
 	w := httptest.NewRecorder()
@@ -92,6 +93,7 @@ func TestExecuteLocal(t *testing.T) {
 
 func TestExecuteLocalFailed_InvalidImage(t *testing.T) {
 	db.Init()
+	storage.Init()
 	router := setupRouter()
 
 	w := httptest.NewRecorder()
@@ -141,6 +143,7 @@ func TestExecuteLocalFailed_InvalidImage(t *testing.T) {
 
 func TestExecuteLocalFailed(t *testing.T) {
 	db.Init()
+	storage.Init()
 	router := setupRouter()
 
 	w := httptest.NewRecorder()
@@ -190,6 +193,7 @@ func TestExecuteLocalFailed(t *testing.T) {
 
 func TestReportLocal(t *testing.T) {
 	db.Init()
+	storage.Init()
 	router := setupRouter()
 
 	w := httptest.NewRecorder()
@@ -211,6 +215,7 @@ func TestReportLocal(t *testing.T) {
 
 func TestReportPastExecutionsLocal_ByCondition(t *testing.T) {
 	db.Init()
+	storage.Init()
 	router := setupRouter()
 
 	w := httptest.NewRecorder()

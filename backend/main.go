@@ -3,6 +3,7 @@ package main
 import (
 	"cicd/pipeci/backend/db"
 	"cicd/pipeci/backend/routes"
+	"cicd/pipeci/backend/storage"
 	"log"
 	"net/http"
 
@@ -49,9 +50,15 @@ func main() {
 		log.Printf("Loading .env file.")
 	}
 
+	// Init database
 	db.Init()
 
+	// Init artifact storage
+	storage.Init()
+
+	// Setup Gin Router
 	router := setupRouter()
+
 	// Expose
 	_ = router.Run("0.0.0.0:8080")
 }

@@ -2,16 +2,19 @@
 package DockerService
 
 import (
+	"bytes"
 	"cicd/pipeci/backend/db"
 	"cicd/pipeci/backend/models"
 	JobService "cicd/pipeci/backend/services/job"
 	PipelineService "cicd/pipeci/backend/services/pipeline"
 	StageService "cicd/pipeci/backend/services/stage"
+	"cicd/pipeci/backend/storage"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -117,21 +120,29 @@ func (dc *DockerClient) WaitContainer(containerId string) error {
 	}
 }
 
-/* Retrieve container logs */
-// func (dc *DockerClient) GetContainerLogs(containerID string) error {
-// 	out, err := dc.cli.ContainerLogs(dc.ctx, containerID, container.LogsOptions{
-// 		ShowStdout: true,
-// 		ShowStderr: true,
-// 		Follow:     false,
-// 		Timestamps: false,
-// 	})
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer out.Close()
-// 	_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, out)
-// 	return err
-// }
+/* Retrieve container logs as byte stream for easier MinIO upload */
+func (dc *DockerClient) GetContainerLogs(containerID string) (*bytes.Buffer, error) {
+	// Get container logs
+	out, err := dc.cli.ContainerLogs(dc.ctx, containerID, container.LogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     false,
+		Timestamps: false,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get container logs: %w", err)
+	}
+	defer out.Close()
+
+	// Read logs into a buffer
+	var logBuffer bytes.Buffer
+	_, err = io.Copy(&logBuffer, out)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read container logs: %w", err)
+	}
+
+	return &logBuffer, nil
+}
 
 // Actions on Docker
 func initContainer(job models.JobConfiguration, repository models.Repository) (string, error) {
@@ -157,8 +168,6 @@ func initContainer(job models.JobConfiguration, repository models.Repository) (s
 	cmds = append(cmds, "git checkout "+repository.CommitHash)
 	cmds = append(cmds, job.Script.Value...)
 
-	log.Printf("repository.CommitHash %v", repository.CommitHash)
-
 	// Create container with image and commands to run at start
 	containerId, err := dc.CreateContainer(containerName, job.Image.Value, cmds)
 	if err != nil {
@@ -171,19 +180,28 @@ func initContainer(job models.JobConfiguration, repository models.Repository) (s
 		return containerId, err
 	}
 
-	// // Stream logs to stdout in a goroutine
-	// go func() {
-	// 	err := dc.GetContainerLogs(containerId)
-	// 	if err != nil {
-	// 		fmt.Printf("Failed to stream container logs: %v\n", err)
-	// 	}
-	// }()
-
 	// Wait for completion
 	if err := dc.WaitContainer(containerId); err != nil {
 		return containerId, err
 	}
 
+	// Retrieve container logs
+	containerLogs, err := dc.GetContainerLogs(containerId)
+	if err != nil {
+		return containerId, err
+	}
+
+	// Upload logs to MinIO
+	var minioBucket string = os.Getenv("DEFAULT_BUCKET")
+	err = storage.UploadLogsToMinIO(minioBucket, fmt.Sprintf("containers/%v", containerId), containerLogs)
+	if err != nil {
+		return containerId, err
+	}
+
+	// Delete container after saving logs
+	dc.DeleteContainer(containerId)
+
+	// Done
 	log.Printf("Execution done for Container Id %v", containerId)
 	return containerId, nil
 }
