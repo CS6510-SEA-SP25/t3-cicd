@@ -53,23 +53,22 @@ func PostRequest(url string, requestBody interface{}) (interface{}, error) {
 
 	// Process response body
 	body, err := io.ReadAll(response.Body)
+	var result interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("error unmarshaling JSON: %w", err)
+	}
 
 	// Process status code
 	if response.StatusCode == http.StatusBadRequest {
-		return nil, fmt.Errorf("PostRequest bad request: %#v", body)
+		return nil, fmt.Errorf("PostRequest bad request: %#v", result)
 	}
 	if response.StatusCode == http.StatusInternalServerError {
-		return nil, fmt.Errorf("PostRequest internal server error: %#v", body)
+		return nil, fmt.Errorf("PostRequest internal server error: %#v", result)
 	}
 
 	// Non-error status code
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
-	}
-
-	var result interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("error unmarshaling JSON: %w", err)
 	}
 
 	return result, nil
