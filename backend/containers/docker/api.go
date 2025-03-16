@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -19,6 +20,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 )
 
 // Docker Client
@@ -117,6 +119,22 @@ func (dc *DockerClient) WaitContainer(containerId string) error {
 	}
 }
 
+/* Retrieve container logs */
+func (dc *DockerClient) GetContainerLogs(containerID string) error {
+	out, err := dc.cli.ContainerLogs(dc.ctx, containerID, container.LogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     false,
+		Timestamps: false,
+	})
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+	return err
+}
+
 // Actions on Docker
 func initContainer(job models.JobConfiguration, repository models.Repository) (string, error) {
 	log.Printf("Running stage `%v`, job: `%v`", job.Stage.Value, job.Name.Value)
@@ -141,9 +159,6 @@ func initContainer(job models.JobConfiguration, repository models.Repository) (s
 	cmds = append(cmds, "git checkout "+repository.CommitHash)
 	cmds = append(cmds, job.Script.Value...)
 
-	log.Printf("repository.Url %v", repository.Url)
-	log.Printf("repository.CommitHash %v", repository.CommitHash)
-
 	// Create container with image and commands to run at start
 	containerId, err := dc.CreateContainer(containerName, job.Image.Value, cmds)
 	if err != nil {
@@ -156,13 +171,21 @@ func initContainer(job models.JobConfiguration, repository models.Repository) (s
 		return containerId, err
 	}
 
+	// Stream logs to stdout in a goroutine
+	go func() {
+		err := dc.GetContainerLogs(containerId)
+		if err != nil {
+			fmt.Printf("Failed to stream container logs: %v\n", err)
+		}
+	}()
+
 	// Wait for completion
 	if err := dc.WaitContainer(containerId); err != nil {
 		return containerId, err
 	}
 
 	// if err := dc.GetContainerLogs(containerId); err != nil {
-	// 	return err
+	// 	return containerId, err
 	// }
 	log.Printf("Execution done for Container Id %v", containerId)
 	return containerId, nil
