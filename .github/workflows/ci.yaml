@@ -30,6 +30,7 @@ jobs:
       DB_USER: root
       DB_PASSWORD: root
       DB_HOST: localhost
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     defaults:
       run:
         shell: bash
