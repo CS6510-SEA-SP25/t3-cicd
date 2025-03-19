@@ -31,6 +31,10 @@ jobs:
       DB_PASSWORD: root
       DB_HOST: localhost
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      MINIO_ENDPOINT: http://localhost:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      DEFAULT_BUCKET: test-bucket
     defaults:
       run:
         shell: bash
@@ -70,11 +74,6 @@ jobs:
       # Run tests
       - name: Run local api for CLI testing
         working-directory: ./backend
-        env:
-          MINIO_ENDPOINT: http://localhost:9000
-          MINIO_ACCESS_KEY: minioadmin
-          MINIO_SECRET_KEY: minioadmin
-          DEFAULT_BUCKET: test-bucket
         run: |
           go mod tidy
           nohup go run . > ../server.log 2>&1 &  # Run the Go application in the background
@@ -175,6 +174,10 @@ jobs:
       DB_USER: root
       DB_PASSWORD: root
       DB_HOST: localhost
+      MINIO_ENDPOINT: http://localhost:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      DEFAULT_BUCKET: test-bucket
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -209,11 +212,6 @@ jobs:
       - name: Install dependencies
         run: go mod tidy
       - name: Run test
-        env:
-          MINIO_ENDPOINT: http://localhost:9000
-          MINIO_ACCESS_KEY: minioadmin
-          MINIO_SECRET_KEY: minioadmin
-          DEFAULT_BUCKET: test-bucket
         run: go test ./... -v -coverprofile=./cover.out
       - name: Generate coverage reports
         run: pwd && ./coverage.sh > ./reports/test-summary.txt
