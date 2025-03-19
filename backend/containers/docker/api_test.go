@@ -23,7 +23,7 @@ var TEST_PIPELINE_PREFIX string = "test_"
 // Load .env before running tests
 func TestMain(m *testing.M) {
 	if err := godotenv.Load("../../.env"); err != nil {
-		log.Fatal("Failed to load .env file. Ensure the file exists.")
+		log.Println("Failed to load .env file. Ensure the file exists.")
 	}
 
 	log.Println(".env file loaded successfully")
