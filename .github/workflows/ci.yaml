@@ -25,20 +25,6 @@ jobs:
     if: github.event.pull_request.draft == false # Skip CI for draft PRs
     name: CLI - Test and Coverage
     runs-on: ubuntu-latest
-    services:
-      minio:
-        image: bitnami/minio:latest
-        ports:
-          - 9000:9000
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-        options: >-
-          --health-cmd "curl -f http://localhost:9000/minio/health/live || exit 1"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
-        command: minio server /data --console-address ":9001"
     env:
       DB_DATABASE: CicdApplication
       DB_USER: root
@@ -58,14 +44,16 @@ jobs:
       - name: Verify Git commit
         run: git rev-parse HEAD
       # MinIO
-      - name: Install MinIO Client (mc)
+      - name: Start MinIO in Background
         run: |
-          curl -O https://dl.min.io/client/mc/release/linux-amd64/mc
-          chmod +x mc
-          sudo mv mc /usr/local/bin/
-      - name: Configure MinIO Client
-        run: |
-          mc alias set local http://localhost:9000 minioadmin minioadmin
+          docker run -d \
+            -p 9000:9000 \
+            -p 9001:9001 \
+            --name minio \
+            -v $HOME/minio/data:/data \
+            -e "MINIO_ROOT_USER=minioadmin" \
+            -e "MINIO_ROOT_PASSWORD=minioadmin" \
+            quay.io/minio/minio server /data --console-address ":9001"
       # Go
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -177,20 +165,7 @@ jobs:
     if: github.event.pull_request.draft == false # Skip CI for draft PRs
     name: backend - Test and Coverage
     runs-on: ubuntu-latest
-    services:
-      minio:
-        image: bitnami/minio:latest
-        ports:
-          - 9000:9000
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-        options: >-
-          --health-cmd "curl -f http://localhost:9000/minio/health/live || exit 1"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
-        command: minio server /data --console-address ":9001"
+
     defaults:
       run:
         shell: bash
@@ -209,14 +184,16 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
       # MinIO
-      - name: Install MinIO Client (mc)
+      - name: Start MinIO in Background
         run: |
-          curl -O https://dl.min.io/client/mc/release/linux-amd64/mc
-          chmod +x mc
-          sudo mv mc /usr/local/bin/
-      - name: Configure MinIO Client
-        run: |
-          mc alias set local http://localhost:9000 minioadmin minioadmin
+          docker run -d \
+            -p 9000:9000 \
+            -p 9001:9001 \
+            --name minio \
+            -v $HOME/minio/data:/data \
+            -e "MINIO_ROOT_USER=minioadmin" \
+            -e "MINIO_ROOT_PASSWORD=minioadmin" \
+            quay.io/minio/minio server /data --console-address ":9001"
       # MySQL
       - name: Set up MySQL
         run: |
