@@ -91,7 +91,7 @@ jobs:
       - name: Install dependecies
         run: go mod tidy
       - name: Run Tests
-        run: go test ./... -coverprofile=./cover.out
+        run: go test ./... -v -coverprofile=./cover.out
       - name: Get Docker logs
         run: docker ps -aq | xargs -I {} docker logs {}
       - name: Generate coverage report
@@ -214,7 +214,7 @@ jobs:
           MINIO_ACCESS_KEY: minioadmin
           MINIO_SECRET_KEY: minioadmin
           DEFAULT_BUCKET: test-bucket
-        run: go test ./... -coverprofile=./cover.out
+        run: go test ./... -v -coverprofile=./cover.out
       - name: Generate coverage reports
         run: pwd && ./coverage.sh > ./reports/test-summary.txt
       ####
