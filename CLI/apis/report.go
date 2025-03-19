@@ -114,13 +114,12 @@ func logExecutionReport(input Report_ResponseBody) error {
 
 // Convert interface{} to []Report
 func convertToReports(data interface{}) ([]Report_ResponseBody, error) {
+	var reports = make([]Report_ResponseBody, 0)
 	// Type assert to []interface{}
 	dataList, ok := data.([]interface{})
 	if !ok {
 		return nil, fmt.Errorf("failed to cast to []interface{}")
 	}
-
-	var reports []Report_ResponseBody
 
 	for _, item := range dataList {
 		// Type assert to map[string]interface{}
