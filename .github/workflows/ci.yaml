@@ -27,16 +27,18 @@ jobs:
     runs-on: ubuntu-latest
     services:
       minio:
-        image: quay.io/minio/minio
+        image: bitnami/minio:latest
         ports:
           - 9000:9000
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
         options: >-
           --health-cmd "curl -f http://localhost:9000/minio/health/live || exit 1"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
-          --entrypoint /bin/sh
-          --command -c "mkdir -p /data && minio server /data --console-address ':9001'"
+    command: minio server /data --console-address ":9001"
     env:
       DB_DATABASE: CicdApplication
       DB_USER: root
@@ -177,16 +179,17 @@ jobs:
     runs-on: ubuntu-latest
     services:
       minio:
-        image: quay.io/minio/minio
+        image: bitnami/minio:latest
         ports:
           - 9000:9000
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
         options: >-
           --health-cmd "curl -f http://localhost:9000/minio/health/live || exit 1"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
-          --entrypoint /bin/sh
-          --command -c "mkdir -p /data && minio server /data --console-address ':9001'"
     defaults:
       run:
         shell: bash
