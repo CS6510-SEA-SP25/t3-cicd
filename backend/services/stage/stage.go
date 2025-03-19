@@ -4,6 +4,7 @@ import (
 	"cicd/pipeci/backend/models"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -15,13 +16,27 @@ func NewStageService(db *sql.DB) *StageService {
 	return &StageService{db: db}
 }
 
-// Get stages in a pipeline
-func (service *StageService) GetStagesByPipelineId(pipelineId int) ([]models.Stage, error) {
+// Query stage executions by input conditions
+func (service *StageService) QueryStages(filters map[string]interface{}) ([]models.Stage, error) {
 	var stages []models.Stage
+	query := "SELECT * FROM Stages"
+	args := make([]interface{}, 0)
+	conditions := make([]string, 0)
 
-	rows, err := service.db.Query("SELECT * FROM Stages WHERE pipeline_id = ?", pipelineId)
+	// Build the conditions
+	for key, value := range filters {
+		conditions = append(conditions, fmt.Sprintf("%s = ?", key))
+		args = append(args, value)
+	}
+
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	// Execute
+	rows, err := service.db.Query(query+" ORDER BY start_time", args...)
 	if err != nil {
-		return nil, fmt.Errorf("GetStagesByPipelineId: %v", err)
+		return nil, fmt.Errorf("QueryStages: %v", err)
 	}
 	defer rows.Close()
 
@@ -31,13 +46,15 @@ func (service *StageService) GetStagesByPipelineId(pipelineId int) ([]models.Sta
 			&stage.StageId, &stage.PipelineId, &stage.Name,
 			&stage.Status, &stage.StartTime, &stage.EndTime,
 		); err != nil {
-			return nil, fmt.Errorf("GetStagesByPipelineId: %v", err)
+			return nil, fmt.Errorf("QueryStages: %v", err)
 		}
 		stages = append(stages, stage)
 	}
+
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("GetStagesByPipelineId: %v", err)
+		return nil, fmt.Errorf("QueryStages: %v", err)
 	}
+
 	return stages, nil
 }
 

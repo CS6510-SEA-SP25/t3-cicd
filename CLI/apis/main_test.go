@@ -7,11 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestExample(t *testing.T) {
-	t.Skip("Skipping this test")
-	t.Log("This test is skipped")
-}
-
 func TestExecuteLocal(t *testing.T) {
 	// Override BASE_URL for testing
 	BASE_URL = "http://localhost:8080"

@@ -4,8 +4,11 @@ import (
 	"cicd/pipeci/backend/db"
 	"cicd/pipeci/backend/models"
 	PipelineService "cicd/pipeci/backend/services/pipeline"
+	StageService "cicd/pipeci/backend/services/stage"
+	"database/sql"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,6 +17,17 @@ type ReportPastExecutionsLocal_CurrentRepo_RequestBody struct {
 	Repository   models.Repository `json:"repository"`
 	IPAddress    string            `json:"ip_address"`
 	PipelineName string            `json:"pipeline_name"`
+	StageName    string            `json:"stage_name"`
+	RunCounter   int               `json:"run_counter"`
+}
+
+type Report_ResponseBody struct {
+	Id   int    `json:"id"`
+	Name string `json:"name"`
+	// RunCounter int          `json:"run_counter"`
+	StartTime time.Time    `json:"start_time"`
+	EndTime   sql.NullTime `json:"end_time"`
+	Status    string       `json:"status"`
 }
 
 /* Report all local pipeline executions */
@@ -24,23 +38,16 @@ func ReportPastExecutionsLocal_CurrentRepo(c *gin.Context) {
 		return
 	}
 
-	var pipelineService = PipelineService.NewPipelineService(db.Instance)
-	filters := map[string]interface{}{"repository": body.Repository.Url, "ip_address": body.IPAddress}
+	// SQL Filter
+	pipelineFilters := map[string]interface{}{"repository": body.Repository.Url, "ip_address": body.IPAddress}
 
 	// Add commit hash matching if specified
 	if body.Repository.CommitHash != "" {
-		filters["commit_hash"] = body.Repository.CommitHash
+		pipelineFilters["commit_hash"] = body.Repository.CommitHash
 	}
 
-	pipelines, err := pipelineService.QueryPipelines(filters)
-
-	if err != nil {
-		log.Printf("ReportPastExecutionsLocal_CurrentRepo %v", err)
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false})
-	} else {
-		c.IndentedJSON(http.StatusOK, pipelines)
-	}
-	log.Print("reach here!\n")
+	gatherPipelineReport(c, pipelineFilters)
+	log.Println("ReportPastExecutionsLocal_CurrentRepo: Done report summary!")
 }
 
 /* Query local pipeline executions by conditions */
@@ -51,24 +58,142 @@ func ReportPastExecutionsLocal_ByCondition(c *gin.Context) {
 		return
 	}
 
-	var pipelineService = PipelineService.NewPipelineService(db.Instance)
-	filters := map[string]interface{}{"repository": body.Repository.Url, "ip_address": body.IPAddress}
+	// SQL Filter
+	pipelineFilters := map[string]interface{}{"repository": body.Repository.Url, "ip_address": body.IPAddress}
+	stageFilters := map[string]interface{}{}
+	// jobFilters := map[string]interface{}{}
+
+	/*
+		Represent which execution components to be reported
+		0: Pipeline (default)
+		1: Stage
+		2: Job
+	*/
+	var reportOption int = 0
 
 	// Add conditions if specified
+	// CommitHash
 	if body.Repository.CommitHash != "" {
-		filters["commit_hash"] = body.Repository.CommitHash
+		pipelineFilters["commit_hash"] = body.Repository.CommitHash
 	}
+	// Pipeline name
 	if body.PipelineName != "" {
-		filters["name"] = body.PipelineName
+		pipelineFilters["name"] = body.PipelineName
+	}
+	// Stage name
+	if body.StageName != "" {
+		stageFilters["name"] = body.StageName
+		reportOption = 1
 	}
 
-	pipelines, err := pipelineService.QueryPipelines(filters)
+	// Gather report based on reportOption
+	if reportOption == 0 { // Pipeline
+		gatherPipelineReport(c, pipelineFilters)
+	} else if reportOption == 1 { // Stage
+		gatherStageReport(c, pipelineFilters, stageFilters)
+	} else { // Job
+		// gatherJobReport(c, pipelineFilters, stageFilters, jobFilters)
+		gatherPipelineReport(c, pipelineFilters)
+	}
+
+	log.Println("ReportPastExecutionsLocal_ByCondition: Done report summary!")
+}
+
+// ------------ QUERY DATABASE FOR EXECUTION REPORTS ---------------- //
+/* Get execution reports for pipeline */
+func gatherPipelineReport(c *gin.Context, pipelineFilters map[string]interface{}) {
+	var pipelineService = PipelineService.NewPipelineService(db.Instance)
+	var reports []Report_ResponseBody
+
+	pipelines, err := pipelineService.QueryPipelines(pipelineFilters)
+	parsePipelineReports(pipelines, &reports)
 
 	if err != nil {
-		log.Printf("ReportPastExecutionsLocal_ByCondition %v", err)
+		log.Printf("gatherPipelineReport %v", err)
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false})
 	} else {
-		c.IndentedJSON(http.StatusOK, pipelines)
+		c.IndentedJSON(http.StatusOK, reports)
 	}
-	log.Print("reach here!\n")
 }
+
+/* Get execution reports for stage */
+func gatherStageReport(c *gin.Context, pipelineFilters map[string]interface{}, stageFilters map[string]interface{}) {
+	var pipelineService = PipelineService.NewPipelineService(db.Instance)
+	var stageService = StageService.NewStageService(db.Instance)
+	var reports []Report_ResponseBody
+	var err error
+
+	// Get PipelineId then GetStagesByPipelineId
+	pipelines, err := pipelineService.QueryPipelines(pipelineFilters)
+	if err != nil {
+		log.Printf("gatherStageReport %v", err)
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false})
+	}
+
+	// Append MATCHING stages to reports
+	for _, pipeline := range pipelines {
+		var pipelineId int = pipeline.PipelineId
+		stageFilters["pipeline_id"] = pipelineId
+		stages, err := stageService.QueryStages(stageFilters)
+		if err != nil {
+			log.Printf("gatherStageReport %v", err)
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false})
+		} else {
+			parseStageReports(stages, &reports)
+		}
+	}
+
+	// return
+	c.IndentedJSON(http.StatusOK, reports)
+}
+
+// /* Get execution reports for job */
+// func gatherJobReport(c *gin.Context, pipelineFilters map[string]interface{},
+// 	stageFilters map[string]interface{}, jobFilters map[string]interface{}) {
+
+// }
+
+// ------------ PARSE DATABASE SCHEMA TO REPORTS ---------------- //
+/* Parse pipelines and append to general reports list */
+func parsePipelineReports(pipelines []models.Pipeline, reports *[]Report_ResponseBody) {
+	for _, pipeline := range pipelines {
+		report := Report_ResponseBody{
+			Id:        pipeline.PipelineId,
+			Name:      pipeline.Name,
+			StartTime: pipeline.StartTime,
+			Status:    string(pipeline.Status),
+		}
+		// EndTime
+		if pipeline.EndTime.Valid {
+			report.EndTime = pipeline.EndTime
+		} else {
+			report.EndTime = sql.NullTime{Valid: false}
+		}
+		*reports = append(*reports, report)
+	}
+}
+
+/* Parse stages and append to general reports list */
+func parseStageReports(stages []models.Stage, reports *[]Report_ResponseBody) {
+	for _, stage := range stages {
+		report := Report_ResponseBody{
+			Id:        stage.StageId,
+			Name:      stage.Name,
+			StartTime: stage.StartTime,
+			Status:    string(stage.Status),
+		}
+		// EndTime
+		if stage.EndTime.Valid {
+			report.EndTime = stage.EndTime
+		} else {
+			report.EndTime = sql.NullTime{Valid: false}
+		}
+		*reports = append(*reports, report)
+	}
+}
+
+/* Parse jobs and append to general reports list */
+// func parseJobReports(pipelines []models.Pipeline) []Report_ResponseBody {
+// 	var reports []Report_ResponseBody
+// 	return reports
+// }

@@ -33,6 +33,7 @@ var (
 	// report subFlags
 	reportPipelineName string
 	reportRunCounter   int
+	reportStageName    string
 
 	pipeline schema.PipelineConfiguration
 
@@ -343,9 +344,12 @@ var ReportCmd = &cobra.Command{
 
 			// Show summary all past pipeline runs for the local repository if no pipeline name specified
 			if reportPipelineName == "" {
+				if reportStageName != "" {
+					return fmt.Errorf("Stage must be within a pipeline.")
+				}
 				err = apis.ReportPastExecutionsLocal_CurrentRepo(repository)
 			} else {
-				err = apis.ReportPastExecutionsLocal_ByCondition(repository, reportPipelineName)
+				err = apis.ReportPastExecutionsLocal_ByCondition(repository, reportPipelineName, reportStageName, reportRunCounter)
 			}
 		}
 
@@ -376,6 +380,9 @@ func init() {
 
 	// report --pipeline "code-review"
 	ReportCmd.Flags().StringVar(&reportPipelineName, "pipeline", "", "Returns the list of all pipeline runs for the specified pipeline")
+
+	// report --stage "build"
+	ReportCmd.Flags().StringVar(&reportStageName, "stage", "", "Returns the list of all pipeline runs for the specified stage within a pipeline. Must go with --pipeline.")
 
 	// report --run 2
 	ReportCmd.Flags().IntVar(&reportRunCounter, "run", 0, "Run number i-th for a specified pipeline name")
