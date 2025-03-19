@@ -38,7 +38,7 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
-    command: minio server /data --console-address ":9001"
+        command: minio server /data --console-address ":9001"
     env:
       DB_DATABASE: CicdApplication
       DB_USER: root
@@ -190,6 +190,7 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
+        command: minio server /data --console-address ":9001"
     defaults:
       run:
         shell: bash
