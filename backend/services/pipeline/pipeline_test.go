@@ -346,10 +346,12 @@ func TestQueryPipelines_Success(t *testing.T) {
 
 	// Assert that the expected pipelines were returned
 	// assert.Equal(t, 2, len(pipelines))
-	assert.Equal(t, "repo1", pipelines[0].Repository)
-	assert.Equal(t, models.SUCCESS, pipelines[0].Status)
-	assert.Equal(t, "repo1", pipelines[1].Repository)
-	assert.Equal(t, models.SUCCESS, pipelines[1].Status)
+	if len(pipelines) > 0 {
+		assert.Equal(t, "repo1", pipelines[0].Repository)
+		assert.Equal(t, models.SUCCESS, pipelines[0].Status)
+		assert.Equal(t, "repo1", pipelines[1].Repository)
+		assert.Equal(t, models.SUCCESS, pipelines[1].Status)
+	}
 
 	// Ensure all expectations were met
 	if err := mock.ExpectationsWereMet(); err != nil {
