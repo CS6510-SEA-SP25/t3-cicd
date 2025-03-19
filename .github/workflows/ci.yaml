@@ -31,7 +31,7 @@ jobs:
       DB_PASSWORD: root
       DB_HOST: localhost
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      MINIO_ENDPOINT: http://localhost:9000
+      MINIO_ENDPOINT: localhost:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
       DEFAULT_BUCKET: test-bucket
@@ -174,7 +174,7 @@ jobs:
       DB_USER: root
       DB_PASSWORD: root
       DB_HOST: localhost
-      MINIO_ENDPOINT: http://localhost:9000
+      MINIO_ENDPOINT: localhost:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
       DEFAULT_BUCKET: test-bucket
