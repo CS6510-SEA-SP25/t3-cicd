@@ -58,19 +58,6 @@ func CreateBucket(bucket string) {
 	}
 }
 
-// UploadFile uploads a file to MinIO
-func UploadFile(bucket, filePath, objectName string) {
-	ctx := context.Background()
-
-	uploadInfo, err := instance.FPutObject(ctx, bucket, objectName, filePath, minio.PutObjectOptions{})
-	if err != nil {
-		log.Fatalf("Failed to upload file: %v", err)
-	}
-
-	log.Printf("File '%s' uploaded successfully to bucket '%s'.\n", objectName, bucket)
-	fmt.Printf("Upload Details: %+v\n", uploadInfo)
-}
-
 // Uploads logs as byte stream to MinIO
 func UploadLogsToMinIO(bucket, objectName string, logData *bytes.Buffer) error {
 	ctx := context.Background()

@@ -5,6 +5,7 @@ import (
 	"cicd/pipeci/backend/models"
 	"cicd/pipeci/backend/storage"
 	"fmt"
+
 	"log"
 	"os"
 	"strings"
@@ -33,7 +34,7 @@ func TestMain(m *testing.M) {
 
 // Test initializing the Docker client
 func TestInitDockerClient(t *testing.T) {
-	dc, err := InitDockerClient()
+	dc, err := initDockerClient()
 	assert.NoError(t, err)
 	assert.NotNil(t, dc)
 	dc.Close()
@@ -41,18 +42,18 @@ func TestInitDockerClient(t *testing.T) {
 
 // Test pulling an image
 func TestPullImage(t *testing.T) {
-	dc, err := InitDockerClient()
+	dc, err := initDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()
 
 	// Using a lightweight test image
-	err = dc.PullImage("alpine:latest")
+	err = dc.pullImage("alpine:latest")
 	assert.NoError(t, err)
 }
 
 // Test listing images to verify pull worked
 func TestListImages(t *testing.T) {
-	dc, err := InitDockerClient()
+	dc, err := initDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()
 
@@ -63,61 +64,70 @@ func TestListImages(t *testing.T) {
 
 // Test creating a container
 func TestCreateContainer(t *testing.T) {
-	dc, err := InitDockerClient()
+	dc, err := initDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()
 
 	// Ensure image is available
-	err = dc.PullImage("alpine:latest")
+	err = dc.pullImage("alpine:latest")
 	assert.NoError(t, err)
 
 	commands := []string{"echo 'Hello from container'"}
 
 	// Create a container
-	containerId, err := dc.CreateContainer(TEST_PIPELINE_PREFIX+"TestCreateContainer", "alpine:latest", commands)
+	containerId, err := dc.createContainer(TEST_PIPELINE_PREFIX+"TestCreateContainer", "alpine:latest", commands)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, containerId)
+
+	err = dc.deleteContainer(containerId)
+	assert.NoError(t, err)
 }
 
 // Test starting a container
 func TestStartContainer(t *testing.T) {
-	dc, err := InitDockerClient()
+	dc, err := initDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()
 
-	err = dc.PullImage("alpine:latest")
+	err = dc.pullImage("alpine:latest")
 	assert.NoError(t, err)
 
 	commands := []string{"echo 'Container running'"}
 
-	containerId, err := dc.CreateContainer(TEST_PIPELINE_PREFIX+"TestStartContainer", "alpine:latest", commands)
+	containerId, err := dc.createContainer(TEST_PIPELINE_PREFIX+"TestStartContainer", "alpine:latest", commands)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, containerId)
 
 	// Start the container
-	err = dc.StartContainer(containerId)
+	err = dc.startContainer(containerId)
+	assert.NoError(t, err)
+
+	err = dc.deleteContainer(containerId)
 	assert.NoError(t, err)
 }
 
 // Test waiting for a container to complete execution
 func TestWaitContainer(t *testing.T) {
-	dc, err := InitDockerClient()
+	dc, err := initDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()
 
-	err = dc.PullImage("alpine:latest")
+	err = dc.pullImage("alpine:latest")
 	assert.NoError(t, err)
 
 	commands := []string{"echo 'Wait test successful'"}
 
-	containerId, err := dc.CreateContainer(TEST_PIPELINE_PREFIX+"TestWaitContainer", "alpine:latest", commands)
+	containerId, err := dc.createContainer(TEST_PIPELINE_PREFIX+"TestWaitContainer", "alpine:latest", commands)
 	assert.NoError(t, err)
 
-	err = dc.StartContainer(containerId)
+	err = dc.startContainer(containerId)
 	assert.NoError(t, err)
 
 	// Wait for completion
 	err = dc.WaitContainer(containerId)
+	assert.NoError(t, err)
+
+	err = dc.deleteContainer(containerId)
 	assert.NoError(t, err)
 }
 
@@ -141,8 +151,11 @@ func cleanUpAfterTest(dc *DockerClient) error {
 		}
 	}
 
+	// Gather container ids, currently doing nothing
+	// TODO: clean up artifacts
 	for _, containerId := range removedIds {
-		go dc.DeleteContainer(containerId)
+		// go dc.deleteContainer(containerId)
+		fmt.Printf("clean up after test container id: %v", containerId)
 	}
 	return nil
 }
@@ -151,7 +164,7 @@ func cleanUpAfterTest(dc *DockerClient) error {
 func TestExecute(t *testing.T) {
 	db.Init()
 	storage.Init()
-	dc, err := InitDockerClient()
+	dc, err := initDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()
 
@@ -196,7 +209,7 @@ func TestExecute(t *testing.T) {
 func TestExecuteFailed(t *testing.T) {
 	db.Init()
 	storage.Init()
-	dc, err := InitDockerClient()
+	dc, err := initDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()
 
@@ -241,7 +254,7 @@ func TestExecuteFailed(t *testing.T) {
 func TestExecuteFailed_InvalidCommand(t *testing.T) {
 	db.Init()
 	storage.Init()
-	dc, err := InitDockerClient()
+	dc, err := initDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()
 
@@ -286,7 +299,7 @@ func TestExecuteFailed_InvalidCommand(t *testing.T) {
 func TestExecuteFailed_TerminatedJobs(t *testing.T) {
 	db.Init()
 	storage.Init()
-	dc, err := InitDockerClient()
+	dc, err := initDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()
 

@@ -31,7 +31,7 @@ type DockerClient struct {
 }
 
 /* Initialize Docker client */
-func InitDockerClient() (*DockerClient, error) {
+func initDockerClient() (*DockerClient, error) {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -46,7 +46,7 @@ func (dc *DockerClient) Close() {
 }
 
 /* Pull image from Docker hub */
-func (dc *DockerClient) PullImage(imageName string) error {
+func (dc *DockerClient) pullImage(imageName string) error {
 	log.Printf("Installing image: %v\n", imageName)
 	reader, err := dc.cli.ImagePull(dc.ctx, imageName, image.PullOptions{})
 	if err != nil {
@@ -65,7 +65,7 @@ Create Docker container from input image and commands
 	Rev #1: Define the bind mount for the workspace
 	* Rev #2: Git clone inside container instead of mounting from local dir
 */
-func (dc *DockerClient) CreateContainer(containerName string, imageName string, commands []string) (string, error) {
+func (dc *DockerClient) createContainer(containerName string, imageName string, commands []string) (string, error) {
 	// Combine multiple commands into a single shell command
 	joinedCmd := []string{"sh", "-c", ""}
 	for _, cmd := range commands {
@@ -92,8 +92,8 @@ func (dc *DockerClient) CreateContainer(containerName string, imageName string, 
 	return resp.ID, nil
 }
 
-// DeleteContainer deletes a Docker container by its Id
-func (dc *DockerClient) DeleteContainer(containerId string) error {
+// deleteContainer deletes a Docker container by its Id
+func (dc *DockerClient) deleteContainer(containerId string) error {
 	options := container.RemoveOptions{
 		Force: true, // Force removal if the container is running
 	}
@@ -102,7 +102,7 @@ func (dc *DockerClient) DeleteContainer(containerId string) error {
 }
 
 /* Start container */
-func (dc *DockerClient) StartContainer(containerId string) error {
+func (dc *DockerClient) startContainer(containerId string) error {
 	return dc.cli.ContainerStart(dc.ctx, containerId, container.StartOptions{})
 }
 
@@ -121,7 +121,7 @@ func (dc *DockerClient) WaitContainer(containerId string) error {
 }
 
 /* Retrieve container logs as byte stream for easier MinIO upload */
-func (dc *DockerClient) GetContainerLogs(containerID string) (*bytes.Buffer, error) {
+func (dc *DockerClient) getContainerLogs(containerID string) (*bytes.Buffer, error) {
 	// Get container logs
 	out, err := dc.cli.ContainerLogs(dc.ctx, containerID, container.LogsOptions{
 		ShowStdout: true,
@@ -145,16 +145,10 @@ func (dc *DockerClient) GetContainerLogs(containerID string) (*bytes.Buffer, err
 }
 
 // Actions on Docker
-func initContainer(job models.JobConfiguration, repository models.Repository) (string, error) {
+func (dc *DockerClient) initContainer(job models.JobConfiguration, repository models.Repository) (string, error) {
 	log.Printf("Running stage `%v`, job: `%v`", job.Stage.Value, job.Name.Value)
 
-	dc, err := InitDockerClient()
-	if err != nil {
-		return "", err
-	}
-	defer dc.Close()
-
-	if err := dc.PullImage(job.Image.Value); err != nil {
+	if err := dc.pullImage(job.Image.Value); err != nil {
 		return "", err
 	}
 
@@ -169,14 +163,14 @@ func initContainer(job models.JobConfiguration, repository models.Repository) (s
 	cmds = append(cmds, job.Script.Value...)
 
 	// Create container with image and commands to run at start
-	containerId, err := dc.CreateContainer(containerName, job.Image.Value, cmds)
+	containerId, err := dc.createContainer(containerName, job.Image.Value, cmds)
 	if err != nil {
 		return containerId, err
 	}
 	log.Printf("Container Id for job %v: %v", job.Name.Value, containerId)
 
 	// Start container
-	if err := dc.StartContainer(containerId); err != nil {
+	if err := dc.startContainer(containerId); err != nil {
 		return containerId, err
 	}
 
@@ -185,25 +179,32 @@ func initContainer(job models.JobConfiguration, repository models.Repository) (s
 		return containerId, err
 	}
 
+	// Done
+	log.Printf("Execution done for Container Id %v", containerId)
+	return containerId, nil
+}
+
+/* Take actions after executions: get logs, upload to Minio, then delete containers */
+func (dc *DockerClient) handlePostExecution(containerId string) error {
 	// Retrieve container logs
-	containerLogs, err := dc.GetContainerLogs(containerId)
+	containerLogs, err := dc.getContainerLogs(containerId)
 	if err != nil {
-		return containerId, err
+		return err
 	}
 
 	// Upload logs to MinIO
 	var minioBucket string = os.Getenv("DEFAULT_BUCKET")
 	err = storage.UploadLogsToMinIO(minioBucket, fmt.Sprintf("containers/%v", containerId), containerLogs)
 	if err != nil {
-		return containerId, err
+		return err
 	}
 
 	// Delete container after saving logs
-	dc.DeleteContainer(containerId)
+	dc.deleteContainer(containerId)
 
 	// Done
-	log.Printf("Execution done for Container Id %v", containerId)
-	return containerId, nil
+	log.Printf("handlePostExecution done for Container Id %v", containerId)
+	return nil
 }
 
 /*
@@ -211,15 +212,37 @@ Execute jobs in Docker containers
 Revisions:
   - Feb 15: Linear execution
     TODO #1: Parallel execution for single-graph pipeline
-		partially done, need tests
     TODO #2: Parallel execution for multiple-graphs pipeline
-	TODO #3: continue-on-error
+    TODO #3: continue-on-error
 */
-
 func executeJob(job models.JobConfiguration, repository models.Repository) (string, error) {
-	containerId, err := initContainer(job, repository)
+	dc, err := initDockerClient()
 	if err != nil {
-		return containerId, fmt.Errorf("terminating pipeline execution, caused by failure in running job %#v\nCaused by: %v", job.Name.Value, err.Error())
+		return "", err
+	}
+	defer dc.Close()
+
+	containerId, initErr := dc.initContainer(job, repository)
+	postExecErr := dc.handlePostExecution(containerId)
+
+	// If both initContainer and handlePostExecution fail, combine errors
+	if initErr != nil && postExecErr != nil {
+		return containerId, fmt.Errorf(
+			"terminating pipeline execution, caused by failure in running job %#v\nCaused by: %v\nAdditionally, post-execution failed: %v",
+			job.Name.Value, initErr.Error(), postExecErr.Error(),
+		)
+	}
+
+	// Prioritize initErr
+	if initErr != nil {
+		return containerId, fmt.Errorf("terminating pipeline execution, caused by failure in running job %#v\nCaused by: %v",
+			job.Name.Value, initErr.Error(),
+		)
+	}
+
+	// postExecErr
+	if postExecErr != nil {
+		return containerId, fmt.Errorf("post-execution failed for container %s: %v", containerId, postExecErr)
 	}
 	return containerId, nil
 }
@@ -258,7 +281,6 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 	}
 	var pipelineReportId, err = pipelineService.CreatePipeline(pipelineReport)
 	if err != nil {
-		// log.Println("debug 220")
 		return err
 	}
 
@@ -275,7 +297,6 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 		}
 		var stageReportId, err = stageService.CreateStage(stageReport)
 		if err != nil {
-			// log.Println("debug 237")
 			return err
 		}
 
@@ -368,7 +389,6 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 					if err = pipelineService.UpdatePipelineStatusAndEndTime(pipelineReportId, models.FAILED); err != nil {
 						log.Printf("%v\n", err)
 					}
-					// log.Println("debug 330")
 					return result.Err // Return the first error encountered
 				}
 			}
@@ -395,7 +415,6 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 		pipelineService.UpdatePipelineStatusAndEndTime(pipelineReportId, models.SUCCESS)
 	}
 
-	// log.Println("debug 357")
 	return nil
 }
 
