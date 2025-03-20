@@ -11,25 +11,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestGenerateReports(t *testing.T) {
+	err := generateReports("invalid")
+	assert.Error(t, err)
+
+	err = generateReports([]interface{}{
+		map[string]interface{}{
+			"end_time":   map[string]interface{}{"Time": "2025-03-16T07:32:00Z", "Valid": true},
+			"id":         6.0, // cast float64 -> int
+			"name":       "maven_project_1",
+			"start_time": "2025-03-16T07:31:02Z",
+			"status":     "SUCCESS"},
+	})
+	assert.NoError(t, err)
+}
+
 func TestReportPastExecutionsLocal_CurrentRepo_General(t *testing.T) {
 	err := ReportPastExecutionsLocal_CurrentRepo(schema.Repository{
 		Url: "https://github.com/CS6510-SEA-SP25/t3-cicd.git",
-	})
-	assert.NoError(t, err)
-
-	err = logPipelineExecutionReport("invalid")
-	assert.Error(t, err)
-
-	err = logPipelineExecutionReport(map[string]interface{}{
-		"commit_hash": "ae47cc929081a0312a54bf85f3f6c232a912e243",
-		"end_time":    "2025-02-23T18:36:45Z",
-		"ip_address":  "0.0.0.0",
-		"name":        "test_pipeline",
-		"pipeline_id": 50,
-		"repository":  "https://github.com/CS6510-SEA-SP25/t3-cicd.git",
-		"stage_order": "build",
-		"start_time":  "2025-02-23T18:36:44Z",
-		"status":      "FAILED",
 	})
 	assert.NoError(t, err)
 }
@@ -58,10 +57,10 @@ func TestReportPastExecutionsLocal_CurrentRepo_NoReport(t *testing.T) {
 func TestReportPastExecutionsLocal_ByCondition(t *testing.T) {
 	err := ReportPastExecutionsLocal_ByCondition(schema.Repository{
 		Url: "https://github.com/CS6510-SEA-SP25/t3-cicd.git",
-	}, "name")
+	}, "pipeline_name", "", "", 0)
 	assert.NoError(t, err)
 
-	err = logPipelineExecutionReport("invalid")
+	err = generateReports("invalid")
 	assert.Error(t, err)
 }
 
@@ -69,6 +68,6 @@ func ReportPastExecutionsLocal_ByCondition_Success(t *testing.T) {
 	err := ReportPastExecutionsLocal_ByCondition(schema.Repository{
 		Url:        "https://github.com/CS6510-SEA-SP25/t3-cicd.git",
 		CommitHash: "5901fe28dc221ed92d5e1ce95afaadc3383f3431",
-	}, "name")
+	}, "pipeline_name", "", "", 0)
 	assert.NoError(t, err)
 }

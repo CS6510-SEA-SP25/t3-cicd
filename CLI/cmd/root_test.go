@@ -315,3 +315,105 @@ func TestReport(t *testing.T) {
 	// 	t.Errorf("unexpected error message: %v", err)
 	// }
 }
+
+func TestReport_InvalidStage(t *testing.T) {
+	// Capture log output
+	var buf bytes.Buffer
+	log.SetOutput(&buf)      // Redirect log output to buffer
+	defer log.SetOutput(nil) // Reset after test
+
+	// Store the original directory to restore later
+	originalDir, _ := os.Getwd()
+	// Restore original directory after test
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Fatalf("Failed to return to original directory: %v\n", err)
+		}
+	}()
+
+	// Change to a wrong directory (assume it's root for test purposes)
+	err := os.Chdir("../../")
+	if err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
+
+	cmd.RootCmd.SetArgs([]string{"report", "--local", "--stage", "build"})
+
+	// Fix this test
+	err = cmd.ReportCmd.Execute()
+	assert.Error(t, err)
+
+	assert.Contains(t, err.Error(), "stage must be within a pipeline")
+
+	t.Cleanup(func() {
+		cmd.RootCmd.SetArgs([]string{}) // Reset after test
+	})
+}
+
+func TestReport_JobWithNoStage_1(t *testing.T) {
+	// Capture log output
+	var buf bytes.Buffer
+	log.SetOutput(&buf)      // Redirect log output to buffer
+	defer log.SetOutput(nil) // Reset after test
+
+	// Store the original directory to restore later
+	originalDir, _ := os.Getwd()
+	// Restore original directory after test
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Fatalf("Failed to return to original directory: %v\n", err)
+		}
+	}()
+
+	// Change to a wrong directory (assume it's root for test purposes)
+	err := os.Chdir("../../")
+	if err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
+
+	cmd.RootCmd.SetArgs([]string{"report", "--local", "--pipeline", "", "--stage", "", "--job", "compile"})
+
+	// Fix this test
+	err = cmd.ReportCmd.Execute()
+	assert.Error(t, err)
+
+	assert.Contains(t, err.Error(), "job must be within a pipeline and a stage")
+
+	t.Cleanup(func() {
+		cmd.RootCmd.SetArgs([]string{}) // Reset after test
+	})
+}
+
+func TestReport_JobWithNoStage_2(t *testing.T) {
+	// Capture log output
+	var buf bytes.Buffer
+	log.SetOutput(&buf)      // Redirect log output to buffer
+	defer log.SetOutput(nil) // Reset after test
+
+	// Store the original directory to restore later
+	originalDir, _ := os.Getwd()
+	// Restore original directory after test
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Fatalf("Failed to return to original directory: %v\n", err)
+		}
+	}()
+
+	// Change to a wrong directory (assume it's root for test purposes)
+	err := os.Chdir("../../")
+	if err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
+
+	cmd.RootCmd.SetArgs([]string{"report", "--local", "--pipeline", "name", "--stage", "", "--job", "compile"})
+
+	// Fix this test
+	err = cmd.ReportCmd.Execute()
+	assert.Error(t, err)
+
+	assert.Contains(t, err.Error(), "job must be within a stage")
+
+	t.Cleanup(func() {
+		cmd.RootCmd.SetArgs([]string{}) // Reset after test
+	})
+}

@@ -33,6 +33,8 @@ var (
 	// report subFlags
 	reportPipelineName string
 	reportRunCounter   int
+	reportStageName    string
+	reportJobName      string
 
 	pipeline schema.PipelineConfiguration
 
@@ -343,9 +345,17 @@ var ReportCmd = &cobra.Command{
 
 			// Show summary all past pipeline runs for the local repository if no pipeline name specified
 			if reportPipelineName == "" {
+				if reportStageName != "" {
+					return fmt.Errorf("stage must be within a pipeline")
+				} else if reportJobName != "" {
+					return fmt.Errorf("job must be within a pipeline and a stage")
+				}
 				err = apis.ReportPastExecutionsLocal_CurrentRepo(repository)
 			} else {
-				err = apis.ReportPastExecutionsLocal_ByCondition(repository, reportPipelineName)
+				if reportStageName == "" && reportJobName != "" {
+					return fmt.Errorf("job must be within a stage")
+				}
+				err = apis.ReportPastExecutionsLocal_ByCondition(repository, reportPipelineName, reportStageName, reportJobName, reportRunCounter)
 			}
 		}
 
@@ -375,7 +385,13 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&commit, "commit", "", "Specify Git commit hash.")
 
 	// report --pipeline "code-review"
-	ReportCmd.Flags().StringVar(&reportPipelineName, "pipeline", "", "Returns the list of all pipeline runs for the specified pipeline")
+	ReportCmd.Flags().StringVar(&reportPipelineName, "pipeline", "", "Returns the list of all executions for the specified pipeline")
+
+	// report --stage "build"
+	ReportCmd.Flags().StringVar(&reportStageName, "stage", "", "Returns the list of all executions for the specified stage within a pipeline. Must go with --pipeline.")
+
+	// report --job "compile"
+	ReportCmd.Flags().StringVar(&reportJobName, "job", "", "Returns the list of all executions for the specified job within a pipeline and a stage. Must go with --pipeline and --stage.")
 
 	// report --run 2
 	ReportCmd.Flags().IntVar(&reportRunCounter, "run", 0, "Run number i-th for a specified pipeline name")

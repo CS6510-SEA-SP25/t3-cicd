@@ -3,6 +3,7 @@ package StageService
 import (
 	"cicd/pipeci/backend/models"
 	"fmt"
+	"regexp"
 	"testing"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetStagesByPipelineId(t *testing.T) {
+func TestQueryStages_Success(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
@@ -19,19 +20,24 @@ func TestGetStagesByPipelineId(t *testing.T) {
 
 	service := NewStageService(db)
 
-	// Define the expected rows
-	pipelineId := 1
-	rows := sqlmock.NewRows([]string{"stage_id", "pipeline_id", "name", "status", "start_time", "end_time"}).
-		AddRow(1, pipelineId, "stage1", models.SUCCESS, time.Now(), time.Now()).
-		AddRow(2, pipelineId, "stage2", models.SUCCESS, time.Now(), time.Now())
+	// Define the filters
+	filters := map[string]interface{}{
+		"name":   "stage1",
+		"status": models.SUCCESS,
+	}
 
-	// Expect the query and return the mock rows
-	mock.ExpectQuery("SELECT \\* FROM Stages WHERE pipeline_id = ?").
-		WithArgs(pipelineId).
+	// Define the expected rows
+	rows := sqlmock.NewRows([]string{"stage_id", "pipeline_id", "name", "status", "start_time", "end_time"}).
+		AddRow(1, 1, "stage1", models.SUCCESS, time.Now(), time.Now()).
+		AddRow(2, 1, "stage2", models.SUCCESS, time.Now(), time.Now())
+
+	// Expect the query with the correct filters
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM Stages WHERE name = ? AND status = ? ORDER BY start_time")).
+		WithArgs("stage1", models.SUCCESS).
 		WillReturnRows(rows)
 
 	// Call the method under test
-	stages, err := service.GetStagesByPipelineId(pipelineId)
+	stages, err := service.QueryStages(filters)
 
 	// Assert that no error occurred
 	assert.NoError(t, err)
@@ -40,6 +46,78 @@ func TestGetStagesByPipelineId(t *testing.T) {
 	assert.Equal(t, 2, len(stages))
 	assert.Equal(t, "stage1", stages[0].Name)
 	assert.Equal(t, "stage2", stages[1].Name)
+
+	// Ensure all expectations were met
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestQueryStages_NoFilters(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	service := NewStageService(db)
+
+	// Define no filters
+	filters := map[string]interface{}{}
+
+	// Define the expected rows
+	rows := sqlmock.NewRows([]string{"stage_id", "pipeline_id", "name", "status", "start_time", "end_time"}).
+		AddRow(1, 1, "stage1", models.SUCCESS, time.Now(), time.Now()).
+		AddRow(2, 1, "stage2", models.PENDING, time.Now(), time.Now())
+
+	// Expect the query with no filters
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM Stages ORDER BY start_time")).
+		WillReturnRows(rows)
+
+	// Call the method under test
+	stages, err := service.QueryStages(filters)
+
+	// Assert that no error occurred
+	assert.NoError(t, err)
+
+	// Assert that the expected stages were returned
+	assert.Equal(t, "stage1", stages[0].Name)
+	assert.Equal(t, "stage2", stages[1].Name)
+
+	// Ensure all expectations were met
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestQueryStages_DBError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	service := NewStageService(db)
+
+	// Define the filters
+	filters := map[string]interface{}{
+		"name": "stage1",
+	}
+
+	// Expect the query to return an error
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM Stages WHERE name = ? ORDER BY start_time")).
+		WithArgs("stage1").
+		WillReturnError(fmt.Errorf("database error"))
+
+	// Call the method under test
+	stages, err := service.QueryStages(filters)
+
+	// Assert that an error occurred
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "QueryStages: database error")
+
+	// Assert that no stages were returned
+	assert.Nil(t, stages)
 
 	// Ensure all expectations were met
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -151,40 +229,6 @@ func TestUpdateStageStatusAndEndTime_NotFound(t *testing.T) {
 	// Assert that an error occurred
 	assert.Error(t, err)
 	assert.Equal(t, fmt.Errorf("UpdateStageStatusAndEndTime: no stage found with ID %d", stageID), err)
-
-	// Ensure all expectations were met
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %s", err)
-	}
-}
-
-// Test on failed scenarios
-func TestGetStagesByPipelineId_DBError(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-	}
-	defer db.Close()
-
-	service := NewStageService(db)
-
-	// Define the pipeline ID
-	pipelineId := 1
-
-	// Expect the query to return an error
-	mock.ExpectQuery("SELECT \\* FROM Stages WHERE pipeline_id = ?").
-		WithArgs(pipelineId).
-		WillReturnError(fmt.Errorf("database error"))
-
-	// Call the method under test
-	stages, err := service.GetStagesByPipelineId(pipelineId)
-
-	// Assert that an error occurred
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "GetStagesByPipelineId: database error")
-
-	// Assert that no stages were returned
-	assert.Nil(t, stages)
 
 	// Ensure all expectations were met
 	if err := mock.ExpectationsWereMet(); err != nil {
