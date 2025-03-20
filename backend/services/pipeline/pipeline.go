@@ -4,6 +4,7 @@ import (
 	"cicd/pipeci/backend/models"
 	"database/sql"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 )
@@ -99,6 +100,9 @@ func (service *PipelineService) QueryPipelines(filters map[string]interface{}) (
 		conditions = append(conditions, fmt.Sprintf("%s = ?", key))
 		args = append(args, value)
 	}
+
+	// Sort to turn into deterministic order
+	sort.Strings(conditions)
 
 	if len(conditions) > 0 {
 		query += " WHERE " + strings.Join(conditions, " AND ")
