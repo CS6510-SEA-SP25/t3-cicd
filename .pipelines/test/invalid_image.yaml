@@ -1,0 +1,18 @@
+version: v0
+
+# Pipeline info
+pipeline:
+  name: test_pipeline
+
+# List of stages - show order of execution
+stages:
+  - build
+# Stages defined below
+jobs:
+  # build
+  - name: compile
+    stage: build
+    image: maven_not_exist
+    script:
+      - ls -la
+      - mvn -v

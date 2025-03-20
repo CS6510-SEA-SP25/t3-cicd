@@ -5,6 +5,9 @@ on:
   push:
     branches:
       - main
+    path:
+      - "!dev-docs/**"
+      - "!README.md"
   workflow_call:
     inputs:
       tag:
@@ -13,17 +16,95 @@ on:
         type: string
 
 env:
-  GO_VERSION: stable
-  GOLANGCI_LINT_VERSION: v1.60
-
-defaults:
-  run:
-    shell: bash
-    working-directory: ./CLI
+  GO_VERSION: "1.23.6"
+  GOLANGCI_LINT_VERSION: v1.63.4
 
 jobs:
-  test:
-    name: Test and Coverage
+  ### CLI codebase
+  cli-test:
+    if: github.event.pull_request.draft == false # Skip CI for draft PRs
+    name: CLI - Test and Coverage
+    runs-on: ubuntu-latest
+    env:
+      DB_DATABASE: CicdApplication
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_HOST: localhost
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      MINIO_ENDPOINT: localhost:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      DEFAULT_BUCKET: test-bucket
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./CLI
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0 # Ensure full history is available
+      - name: Verify Git commit
+        run: git rev-parse HEAD
+      # MinIO
+      - name: Start MinIO in Background
+        run: |
+          docker run -d \
+            -p 9000:9000 \
+            -p 9001:9001 \
+            --name minio \
+            -v $HOME/minio/data:/data \
+            -e "MINIO_ROOT_USER=minioadmin" \
+            -e "MINIO_ROOT_PASSWORD=minioadmin" \
+            quay.io/minio/minio server /data --console-address ":9001"
+      # Go
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      # MySQL
+      - name: Set up MySQL
+        run: |
+          sudo systemctl start mysql
+          mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
+      - name: Apply SQL File
+        working-directory: ./backend # Change if your SQL file is elsewhere
+        run: ls && mysql -u root -p"${{ env.DB_PASSWORD }}" ${{ env.DB_DATABASE }} < ./db/init.sql
+      # Run tests
+      - name: Run local api for CLI testing
+        working-directory: ./backend
+        run: |
+          go mod tidy
+          nohup go run . > ../server.log 2>&1 &  # Run the Go application in the background
+          # Wait until the server is ready to accept requests
+          until curl -s http://localhost:8080 > /dev/null; do
+            echo "Waiting for server to start..."
+            sleep 1  # Wait for 1 second before trying again
+          done
+          echo "Server is up, making the request..."
+          curl http://localhost:8080
+
+      - name: Generate executable
+        run: chmod +x coverage.sh
+      - name: Install dependecies
+        run: go mod tidy
+      - name: Run Tests
+        run: go test ./... -v -coverprofile=./cover.out
+      - name: Get Docker logs
+        run: docker ps -aq | xargs -I {} docker logs {}
+      - name: Generate coverage report
+        run: ./coverage.sh > ./reports/test-summary.txt
+      #### Upload
+      - name: Upload Go test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: CLI_TestReports
+          path: ./CLI/reports/*
+
+  cli-build:
+    needs: cli-test
+    name: CLI - Build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -36,42 +117,20 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-      - name: Run test and coverage script
-        run: |
-          go mod tidy
-          echo "Tidy done"
-      - name: Generate executable
-        run: chmod +x script_coverage.sh
-      - name: Run
-        run: ./script_coverage.sh > ./reports/test-summary.txt
-      ####
-      - name: Upload Go test results
-        uses: actions/upload-artifact@v4
-        with:
-          name: TestReports
-          path: ./CLI/reports/*
-
-  build:
-    needs: test
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
       - name: Build code
         run: |
           go mod tidy
           go build
 
-  golangci-lint:
-    name: Run Lint
+  cli-golangci-lint:
+    name: CLI - Run Lint
     runs-on: ubuntu-latest
-    needs: build
+    needs: cli-build
     continue-on-error: true
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./CLI
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -100,36 +159,122 @@ jobs:
       - name: Run golangci-lint
         run: golangci-lint run --config=.golangci.yaml
 
-  # godoc:
-  #   needs: build
-  #   name: Generate GoDoc
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #     - name: Setup Go
-  #       uses: actions/setup-go@v5
-  #       with:
-  #         go-version: ${{ env.GO_VERSION }}
-  #     - name: Install godoc
-  #       run: |
-  #         go mod tidy
-  #         go install golang.org/x/tools/cmd/godoc@latest
-  #         echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
-  #         go list ./...
-  #     - name: Generate documentation
-  #       run: |
-  #         mkdir -p ./docs
-  #         godoc -http=:6060 &
-  #         sleep 5  # Wait for godoc to start
-  #         wget -r -np -N -E -p -k http://localhost:6060/pkg/ -P ./docs/
-  #     - name: Upload documentation
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: go-docs
-  #         path: ./docs
-  #     - name: Deploy to GitHub Pages
-  #       uses: peaceiris/actions-gh-pages@v3
-  #       with:
-  #         github_token: ${{ secrets.GITHUB_TOKEN }}
-  #         publish_dir: ./docs
+  ### backend codebase
+  backend-test:
+    if: github.event.pull_request.draft == false # Skip CI for draft PRs
+    name: backend - Test and Coverage
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./backend
+    env:
+      DB_DATABASE: CicdApplication
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_HOST: localhost
+      MINIO_ENDPOINT: localhost:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      DEFAULT_BUCKET: test-bucket
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      # Go
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      # MinIO
+      - name: Start MinIO in Background
+        run: |
+          docker run -d \
+            -p 9000:9000 \
+            -p 9001:9001 \
+            --name minio \
+            -v $HOME/minio/data:/data \
+            -e "MINIO_ROOT_USER=minioadmin" \
+            -e "MINIO_ROOT_PASSWORD=minioadmin" \
+            quay.io/minio/minio server /data --console-address ":9001"
+      # MySQL
+      - name: Set up MySQL
+        run: |
+          sudo systemctl start mysql
+          mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
+      - name: Apply SQL File
+        working-directory: ./backend # Change if your SQL file is elsewhere
+        run: mysql -u root -p"${{ env.DB_PASSWORD }}" ${{ env.DB_DATABASE }} < ./db/init.sql
+      - name: Generate executable
+        run: chmod +x coverage.sh
+      - name: Create Env var
+        run: 'echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" && echo "DB_PASSWORD=${{ env.DB_PASSWORD }}"'
+      - name: Install dependencies
+        run: go mod tidy
+      - name: Run test
+        run: go test ./... -v -coverprofile=./cover.out
+      - name: Generate coverage reports
+        run: pwd && ./coverage.sh > ./reports/test-summary.txt
+      ####
+      - name: Upload Go test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend_TestReports
+          path: ./backend/reports/*
+
+  backend-build:
+    needs: backend-test
+    name: backend - Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Build code
+        run: |
+          go mod download
+          go build
+
+  backend-golangci-lint:
+    name: backend - Run Lint
+    runs-on: ubuntu-latest
+    needs: backend-build
+    continue-on-error: true
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-
+      - name: Cache golangci-lint
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/golangci-lint
+          key: golangci-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yaml') }}
+          restore-keys: |
+            golangci-${{ runner.os }}-
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - name: Run golangci-lint
+        run: golangci-lint run --config=.golangci.yaml
