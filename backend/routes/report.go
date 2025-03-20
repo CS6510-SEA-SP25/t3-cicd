@@ -3,6 +3,7 @@ package routes
 import (
 	"cicd/pipeci/backend/db"
 	"cicd/pipeci/backend/models"
+	JobService "cicd/pipeci/backend/services/job"
 	PipelineService "cicd/pipeci/backend/services/pipeline"
 	StageService "cicd/pipeci/backend/services/stage"
 	"database/sql"
@@ -18,16 +19,17 @@ type ReportPastExecutionsLocal_CurrentRepo_RequestBody struct {
 	IPAddress    string            `json:"ip_address"`
 	PipelineName string            `json:"pipeline_name"`
 	StageName    string            `json:"stage_name"`
+	JobName      string            `json:"job_name"`
 	RunCounter   int               `json:"run_counter"`
 }
 
 type Report_ResponseBody struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
-	// RunCounter int          `json:"run_counter"`
+	Id        int          `json:"id"`
+	Name      string       `json:"name"`
 	StartTime time.Time    `json:"start_time"`
 	EndTime   sql.NullTime `json:"end_time"`
 	Status    string       `json:"status"`
+	// RunCounter int          `json:"run_counter"`
 }
 
 /* Report all local pipeline executions */
@@ -50,7 +52,7 @@ func ReportPastExecutionsLocal_CurrentRepo(c *gin.Context) {
 	log.Println("ReportPastExecutionsLocal_CurrentRepo: Done report summary!")
 }
 
-/* Query local pipeline executions by conditions */
+/* Query local executions by conditions */
 func ReportPastExecutionsLocal_ByCondition(c *gin.Context) {
 	var body ReportPastExecutionsLocal_CurrentRepo_RequestBody
 	err := c.ShouldBindJSON(&body)
@@ -61,7 +63,7 @@ func ReportPastExecutionsLocal_ByCondition(c *gin.Context) {
 	// SQL Filter
 	pipelineFilters := map[string]interface{}{"repository": body.Repository.Url, "ip_address": body.IPAddress}
 	stageFilters := map[string]interface{}{}
-	// jobFilters := map[string]interface{}{}
+	jobFilters := map[string]interface{}{}
 
 	/*
 		Represent which execution components to be reported
@@ -85,6 +87,11 @@ func ReportPastExecutionsLocal_ByCondition(c *gin.Context) {
 		stageFilters["name"] = body.StageName
 		reportOption = 1
 	}
+	// Job name
+	if body.JobName != "" {
+		jobFilters["name"] = body.JobName
+		reportOption = 2
+	}
 
 	// Gather report based on reportOption
 	if reportOption == 0 { // Pipeline
@@ -92,8 +99,7 @@ func ReportPastExecutionsLocal_ByCondition(c *gin.Context) {
 	} else if reportOption == 1 { // Stage
 		gatherStageReport(c, pipelineFilters, stageFilters)
 	} else { // Job
-		// gatherJobReport(c, pipelineFilters, stageFilters, jobFilters)
-		gatherPipelineReport(c, pipelineFilters)
+		gatherJobReport(c, pipelineFilters, stageFilters, jobFilters)
 	}
 
 	log.Println("ReportPastExecutionsLocal_ByCondition: Done report summary!")
@@ -117,7 +123,7 @@ func gatherPipelineReport(c *gin.Context, pipelineFilters map[string]interface{}
 }
 
 /* Get execution reports for stage */
-func gatherStageReport(c *gin.Context, pipelineFilters map[string]interface{}, stageFilters map[string]interface{}) {
+func gatherStageReport(c *gin.Context, pipelineFilters, stageFilters map[string]interface{}) {
 	var pipelineService = PipelineService.NewPipelineService(db.Instance)
 	var stageService = StageService.NewStageService(db.Instance)
 	var reports []Report_ResponseBody
@@ -147,11 +153,46 @@ func gatherStageReport(c *gin.Context, pipelineFilters map[string]interface{}, s
 	c.IndentedJSON(http.StatusOK, reports)
 }
 
-// /* Get execution reports for job */
-// func gatherJobReport(c *gin.Context, pipelineFilters map[string]interface{},
-// 	stageFilters map[string]interface{}, jobFilters map[string]interface{}) {
+/* Get execution reports for job */
+func gatherJobReport(c *gin.Context, pipelineFilters, stageFilters, jobFilters map[string]interface{}) {
+	var pipelineService = PipelineService.NewPipelineService(db.Instance)
+	var stageService = StageService.NewStageService(db.Instance)
+	var jobService = JobService.NewJobService(db.Instance)
+	var reports []Report_ResponseBody
+	var err error
 
-// }
+	// Get PipelineId then GetStagesByPipelineId
+	pipelines, err := pipelineService.QueryPipelines(pipelineFilters)
+	if err != nil {
+		log.Printf("gatherStageReport %v", err)
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false})
+	}
+
+	// Get StageId then QueryJobs
+	for _, pipeline := range pipelines {
+		stageFilters["pipeline_id"] = pipeline.PipelineId
+		stages, err := stageService.QueryStages(stageFilters)
+		if err != nil {
+			log.Printf("gatherStageReport %v", err)
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false})
+		} else {
+			// Append MATCHING jobs to reports
+			for _, stage := range stages {
+				jobFilters["stage_id"] = stage.StageId
+				jobs, err := jobService.QueryJobs(jobFilters)
+				if err != nil {
+					log.Printf("gatherJobReport %v", err)
+					c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false})
+				} else {
+					parseJobReports(jobs, &reports)
+				}
+			}
+		}
+	}
+
+	// return
+	c.IndentedJSON(http.StatusOK, reports)
+}
 
 // ------------ PARSE DATABASE SCHEMA TO REPORTS ---------------- //
 /* Parse pipelines and append to general reports list */
@@ -193,7 +234,20 @@ func parseStageReports(stages []models.Stage, reports *[]Report_ResponseBody) {
 }
 
 /* Parse jobs and append to general reports list */
-// func parseJobReports(pipelines []models.Pipeline) []Report_ResponseBody {
-// 	var reports []Report_ResponseBody
-// 	return reports
-// }
+func parseJobReports(jobs []models.Job, reports *[]Report_ResponseBody) {
+	for _, job := range jobs {
+		report := Report_ResponseBody{
+			Id:        job.JobId,
+			Name:      job.Name,
+			StartTime: job.StartTime,
+			Status:    string(job.Status),
+		}
+		// EndTime
+		if job.EndTime.Valid {
+			report.EndTime = job.EndTime
+		} else {
+			report.EndTime = sql.NullTime{Valid: false}
+		}
+		*reports = append(*reports, report)
+	}
+}

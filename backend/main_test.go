@@ -236,6 +236,30 @@ func TestReportPastExecutionsLocal_ByCondition(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestReportStage(t *testing.T) {
+	db.Init()
+	storage.Init()
+	router := setupRouter()
+
+	w := httptest.NewRecorder()
+
+	var repository models.Repository = models.Repository{
+		Url: "https://github.com/CS6510-SEA-SP25/t3-cicd.git",
+	}
+	var body = routes.ReportPastExecutionsLocal_CurrentRepo_RequestBody{
+		Repository:   repository,
+		IPAddress:    "0.0.0.0",
+		PipelineName: "name",
+		StageName:    "stage",
+	}
+	jsonBody, _ := json.Marshal(body)
+	req, err := http.NewRequest("POST", "/report/local/query", strings.NewReader(string(jsonBody)))
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Code)
+	assert.NoError(t, err)
+}
+
 func cleanup() {
 	PipelineService.NewPipelineService(db.Instance).CleanUpTestPipelines()
 }

@@ -3,6 +3,7 @@ package JobService
 import (
 	"cicd/pipeci/backend/models"
 	"fmt"
+	"regexp"
 	"testing"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetJobsByStageId(t *testing.T) {
+func TestQueryJobs_Success(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
@@ -19,27 +20,103 @@ func TestGetJobsByStageId(t *testing.T) {
 
 	service := NewJobService(db)
 
-	// Define the expected rows
-	stageId := 1
-	rows := sqlmock.NewRows([]string{"job_id", "stage_id", "name", "image", "script", "status", "start_time", "end_time"}).
-		AddRow(1, stageId, "job1", "image1", "script1", models.PENDING, time.Now(), time.Now()).
-		AddRow(2, stageId, "job2", "image2", "script2", models.SUCCESS, time.Now(), time.Now())
+	// Define filters
+	filters := map[string]interface{}{
+		"status": models.SUCCESS,
+	}
 
-	// Expect the query and return the mock rows
-	mock.ExpectQuery("SELECT \\* FROM Jobs WHERE stage_id = ?").
-		WithArgs(stageId).
+	// Define expected rows
+	rows := sqlmock.NewRows([]string{"job_id", "stage_id", "name", "image", "script", "status", "start_time", "end_time", "container_id"}).
+		AddRow(1, 1, "job1", "", "", models.SUCCESS, time.Now(), time.Now(), "").
+		AddRow(2, 2, "job2", "", "", models.SUCCESS, time.Now(), time.Now(), "")
+
+	// Expect query with correct filters
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM Jobs WHERE status = ? ORDER BY start_time")).
+		WithArgs(models.SUCCESS).
 		WillReturnRows(rows)
 
-	// Call the method under test
-	jobs, err := service.GetJobsByStageId(stageId)
+	// Call method under test
+	jobs, err := service.QueryJobs(filters)
 
-	// Assert that no error occurred
+	// Assert no error occurred
 	assert.NoError(t, err)
 
-	// Assert that the expected jobs were returned
+	// Assert expected jobs were returned
 	assert.Equal(t, 2, len(jobs))
 	assert.Equal(t, "job1", jobs[0].Name)
 	assert.Equal(t, "job2", jobs[1].Name)
+
+	// Ensure all expectations were met
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestQueryJobs_NoFilters(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	service := NewJobService(db)
+
+	// Define no filters
+	filters := map[string]interface{}{}
+
+	// Define expected rows
+	rows := sqlmock.NewRows([]string{"job_id", "stage_id", "name", "image", "script", "status", "start_time", "end_time", "container_id"}).
+		AddRow(1, 1, "job1", "", "", models.SUCCESS, time.Now(), time.Now(), "").
+		AddRow(2, 2, "job2", "", "", models.SUCCESS, time.Now(), time.Now(), "")
+
+	// Expect query with no filters
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM Jobs ORDER BY start_time")).
+		WillReturnRows(rows)
+
+	// Call method under test
+	jobs, err := service.QueryJobs(filters)
+
+	// Assert no error occurred
+	assert.NoError(t, err)
+
+	// Assert expected jobs were returned
+	assert.Equal(t, "job1", jobs[0].Name)
+	assert.Equal(t, "job2", jobs[1].Name)
+
+	// Ensure all expectations were met
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestQueryJobs_DBError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	service := NewJobService(db)
+
+	// Define filters
+	filters := map[string]interface{}{
+		"name": "job1",
+	}
+
+	// Expect query to return an error
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM Jobs WHERE name = ? ORDER BY start_time")).
+		WithArgs("job1").
+		WillReturnError(fmt.Errorf("database error"))
+
+	// Call method under test
+	jobs, err := service.QueryJobs(filters)
+
+	// Assert an error occurred
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "QueryJobs: database error")
+
+	// Assert no jobs were returned
+	assert.Nil(t, jobs)
 
 	// Ensure all expectations were met
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -161,40 +238,6 @@ func TestUpdateJobStatusAndEndTime_NotFound(t *testing.T) {
 	// Assert that an error occurred
 	assert.Error(t, err)
 	assert.Equal(t, fmt.Errorf("UpdateJobStatusAndEndTime: no job found with ID %d", jobID), err)
-
-	// Ensure all expectations were met
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %s", err)
-	}
-}
-
-// Test on failed scenarios
-func TestGetJobsByStageId_DBError(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-	}
-	defer db.Close()
-
-	service := NewJobService(db)
-
-	// Define the stage ID
-	stageId := 1
-
-	// Expect the query to return an error
-	mock.ExpectQuery("SELECT \\* FROM Jobs WHERE stage_id = ?").
-		WithArgs(stageId).
-		WillReturnError(fmt.Errorf("database error"))
-
-	// Call the method under test
-	jobs, err := service.GetJobsByStageId(stageId)
-
-	// Assert that an error occurred
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "GetJobsByStageId: database error")
-
-	// Assert that no jobs were returned
-	assert.Nil(t, jobs)
 
 	// Ensure all expectations were met
 	if err := mock.ExpectationsWereMet(); err != nil {

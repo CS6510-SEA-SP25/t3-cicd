@@ -57,7 +57,7 @@ func TestReportPastExecutionsLocal_CurrentRepo_NoReport(t *testing.T) {
 func TestReportPastExecutionsLocal_ByCondition(t *testing.T) {
 	err := ReportPastExecutionsLocal_ByCondition(schema.Repository{
 		Url: "https://github.com/CS6510-SEA-SP25/t3-cicd.git",
-	}, "pipeline_name", "", 0)
+	}, "pipeline_name", "", "", 0)
 	assert.NoError(t, err)
 
 	err = generateReports("invalid")
@@ -68,6 +68,6 @@ func ReportPastExecutionsLocal_ByCondition_Success(t *testing.T) {
 	err := ReportPastExecutionsLocal_ByCondition(schema.Repository{
 		Url:        "https://github.com/CS6510-SEA-SP25/t3-cicd.git",
 		CommitHash: "5901fe28dc221ed92d5e1ce95afaadc3383f3431",
-	}, "pipeline_name", "", 0)
+	}, "pipeline_name", "", "", 0)
 	assert.NoError(t, err)
 }

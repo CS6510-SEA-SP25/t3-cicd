@@ -14,16 +14,17 @@ type ReportPastExecutionsLocal_CurrentRepo_RequestBody struct {
 	IPAddress    string            `json:"ip_address"`
 	PipelineName string            `json:"pipeline_name"`
 	StageName    string            `json:"stage_name"`
+	JobName      string            `json:"job_name"`
 	RunCounter   int               `json:"run_counter"`
 }
 
 type Report_ResponseBody struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
-	// RunCounter int          `json:"run_counter"`
+	Id        int          `json:"id"`
+	Name      string       `json:"name"`
 	StartTime time.Time    `json:"start_time"`
 	EndTime   sql.NullTime `json:"end_time"`
 	Status    string       `json:"status"`
+	// RunCounter int          `json:"run_counter"`
 }
 
 /*
@@ -58,7 +59,7 @@ Currently,
 - Local execution at ip_address 0.0.0.0
 - only matching pipelineName, more to come
 */
-func ReportPastExecutionsLocal_ByCondition(repository schema.Repository, pipelineName string, stageName string, runCounter int) error {
+func ReportPastExecutionsLocal_ByCondition(repository schema.Repository, pipelineName, stageName, jobName string, runCounter int) error {
 	var body = ReportPastExecutionsLocal_CurrentRepo_RequestBody{
 		Repository: schema.Repository{
 			Url:        removeTokenFromURL(repository.Url),
@@ -67,6 +68,7 @@ func ReportPastExecutionsLocal_ByCondition(repository schema.Repository, pipelin
 		IPAddress:    "0.0.0.0",
 		PipelineName: strings.TrimSpace(pipelineName),
 		StageName:    strings.TrimSpace(stageName),
+		JobName:      strings.TrimSpace(jobName),
 		RunCounter:   runCounter,
 	}
 
@@ -91,6 +93,7 @@ func generateReports(rawData interface{}) error {
 		return fmt.Errorf("error local pipeline report: type casting failed for API response, %w", err)
 	}
 
+	log.Println("CI/CD Execution details:")
 	// Log each pipeline's details using the function
 	for _, report := range reports {
 		if err = logExecutionReport(report); err != nil {
@@ -102,17 +105,16 @@ func generateReports(rawData interface{}) error {
 
 // Print details of a single pipeline execution report
 func logExecutionReport(input Report_ResponseBody) error {
-	log.Println("CI/CD Execution details:")
-	log.Printf("  Name: %s\n", input.Name)
-	log.Printf("  ID: %v\n", input.Id)
-	log.Printf("  Status: %s\n", input.Status)
-	log.Printf("  Start Time: %s\n", input.StartTime)
-	log.Printf("  End Time: %s\n", input.EndTime.Time)
-	log.Println("----------------------------------------")
+	log.Printf("	Name: %s\n", input.Name)
+	log.Printf("	ID: %v\n", input.Id)
+	log.Printf("	Status: %s\n", input.Status)
+	log.Printf("	Start Time: %s\n", input.StartTime)
+	log.Printf("	End Time: %s\n", input.EndTime.Time)
+	log.Println("	----------------------------------------")
 	return nil
 }
 
-// Convert interface{} to []Report
+// Convert interface{} to []Report_ResponseBody
 func convertToReports(data interface{}) ([]Report_ResponseBody, error) {
 	var reports = make([]Report_ResponseBody, 0)
 	// Type assert to []interface{}
@@ -140,7 +142,7 @@ func convertToReports(data interface{}) ([]Report_ResponseBody, error) {
 	return reports, nil
 }
 
-// Convert map[string]interface{} to Report
+// Convert map[string]interface{} to Report_ResponseBody
 func mapToReport(data map[string]interface{}) (Report_ResponseBody, error) {
 	var report Report_ResponseBody
 	var err error

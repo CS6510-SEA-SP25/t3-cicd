@@ -4,6 +4,7 @@ import (
 	"cicd/pipeci/backend/models"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -15,29 +16,46 @@ func NewJobService(db *sql.DB) *JobService {
 	return &JobService{db: db}
 }
 
-// Get a job report by id
-func (service *JobService) GetJobsByStageId(stageId int) ([]models.Job, error) {
+// Query job executions by input conditions
+func (service *JobService) QueryJobs(filters map[string]interface{}) ([]models.Job, error) {
 	var jobs []models.Job
+	query := "SELECT * FROM Jobs"
+	args := make([]interface{}, 0)
+	conditions := make([]string, 0)
 
-	rows, err := service.db.Query("SELECT * FROM Jobs WHERE stage_id = ?", stageId)
+	// Build the conditions
+	for key, value := range filters {
+		conditions = append(conditions, fmt.Sprintf("%s = ?", key))
+		args = append(args, value)
+	}
+
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	// Execute
+	rows, err := service.db.Query(query+" ORDER BY start_time", args...)
 	if err != nil {
-		return nil, fmt.Errorf("GetJobsByStageId: %v", err)
+		return nil, fmt.Errorf("QueryJobs: %v", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var job models.Job
 		if err := rows.Scan(
-			&job.JobId, &job.StageId, &job.Name, &job.Image, &job.Script,
-			&job.Status, &job.StartTime, &job.EndTime,
+			&job.JobId, &job.StageId, &job.Name,
+			&job.Image, &job.Script, &job.Status,
+			&job.StartTime, &job.EndTime, &job.ContainerId,
 		); err != nil {
-			return nil, fmt.Errorf("GetJobsByStageId: %v", err)
+			return nil, fmt.Errorf("QueryJobs: %v", err)
 		}
 		jobs = append(jobs, job)
 	}
+
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("GetJobsByStageId: %v", err)
+		return nil, fmt.Errorf("QueryJobs: %v", err)
 	}
+
 	return jobs, nil
 }
 
