@@ -186,6 +186,7 @@ func (dc *DockerClient) initContainer(job models.JobConfiguration, repository mo
 
 /* Take actions after executions: get logs, upload to Minio, then delete containers */
 func (dc *DockerClient) handlePostExecution(containerId string) error {
+	log.Printf("ENTER handlePostExecution")
 	// Retrieve container logs
 	containerLogs, err := dc.getContainerLogs(containerId)
 	if err != nil {

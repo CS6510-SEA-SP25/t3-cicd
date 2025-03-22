@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: cicd-api
-          image: minh160302/cicd-api:v0.0.3-patch-2
+          image: minh160302/cicd-api:test0.0.2
           env:
             - name: DB_HOST
               value: mysql
@@ -29,11 +29,30 @@ spec:
                   key: MYSQL_ROOT_PASSWORD
             - name: DB_NAME
               value: CicdApplication
+            # GitHub
             - name: GITHUB_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: github-secret
                   key: token
+            # MinIO
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-keys
+                  key: accesskey
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-keys
+                  key: secretkey
+            # - name: MINIO_ENDPOINT
+            #   value: localhost:9000
+            - name: MINIO_ENDPOINT
+              # value: minio.minio-tenant.svc.cluster.local:9000
+              value: minio.local
+            - name: DEFAULT_BUCKET
+              value: default
           ports:
             - containerPort: 8080
           volumeMounts:
@@ -56,4 +75,4 @@ spec:
     - protocol: TCP
       port: 8080
       targetPort: 8080
-  type: NodePort
+  type: LoadBalancer
