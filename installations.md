@@ -94,12 +94,6 @@ cicd-api   1/1     1            1           10h
 mysql      1/1     1            1           10h
 ```
 
-Expose at port 8080
-
-```bash
-❯ kubectl expose deployment cicd-api --type=LoadBalancer --port=8080
-```
-
 And check for the external IP
 
 ```bash
