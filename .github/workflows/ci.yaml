@@ -76,6 +76,14 @@ jobs:
             -e "MINIO_ROOT_USER=minioadmin" \
             -e "MINIO_ROOT_PASSWORD=minioadmin" \
             quay.io/minio/minio server /data --console-address ":9001"
+      # RabbitMQ
+      - name: Start RabbitMQ in Background
+        run: |
+          docker run -d \ 
+            -p 5672:5672 \
+            -p 15672:15672 \
+            --name rabbitmq \
+            rabbitmq:4.0-management
       # Go
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -207,12 +215,20 @@ jobs:
         run: |
           sudo systemctl start mysql
           mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
+      # RabbitMQ
+      - name: Start RabbitMQ in Background
+        run: |
+          docker run -d \ 
+            -p 5672:5672 \
+            -p 15672:15672 \
+            --name rabbitmq \
+            rabbitmq:4.0-management
       # Download and apply SQL file
       - name: Download SQL file
         uses: actions/download-artifact@v4
         with:
           name: sql-init
-          path: ./backend/db/
+          path: ./worker/db/
       - name: Apply SQL File
         working-directory: ./backend # Change if your SQL file is elsewhere
         run: mysql -u root -p"${{ env.DB_PASSWORD }}" ${{ env.DB_DATABASE }} < ./db/init.sql
@@ -329,6 +345,14 @@ jobs:
             -e "MINIO_ROOT_USER=minioadmin" \
             -e "MINIO_ROOT_PASSWORD=minioadmin" \
             quay.io/minio/minio server /data --console-address ":9001"
+      # RabbitMQ
+      - name: Start RabbitMQ in Background
+        run: |
+          docker run -d \ 
+            -p 5672:5672 \
+            -p 15672:15672 \
+            --name rabbitmq \
+            rabbitmq:4.0-management
       # MySQL
       - name: Set up MySQL
         run: |
