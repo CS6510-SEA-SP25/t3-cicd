@@ -9,6 +9,7 @@ import (
 	types "cicd/pipeci/backend/types"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func enqueue(body types.ExecuteLocal_RequestBody) error {
@@ -26,7 +27,9 @@ func enqueue(body types.ExecuteLocal_RequestBody) error {
 		return err
 	}
 
-	task := queue.Task{Id: 1, Message: types.ExecuteLocal_RequestBody(body)}
+	// Generate UUID as Task ID
+	taskId := uuid.New()
+	task := queue.Task{Id: taskId.String(), Message: body}
 	if err := queue.EnqueueTask(ch, q.Name, task); err != nil {
 		log.Printf("Error enqueuing task: %v", err)
 		return err

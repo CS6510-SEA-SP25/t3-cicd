@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 )
 
 type PipelineService struct {
@@ -41,51 +40,6 @@ func (service *PipelineService) GetPipelines() ([]models.Pipeline, error) {
 		return nil, fmt.Errorf("GetPipelines: %v", err)
 	}
 	return pipelines, nil
-}
-
-// Create a new pipeline report
-func (service *PipelineService) CreatePipeline(pipeline models.Pipeline) (int, error) {
-	pipeline.StartTime = time.Now()
-
-	result, err := service.db.Exec(
-		"INSERT INTO Pipelines (repository, commit_hash, ip_address, name, stage_order, status, start_time) VALUES (?, ?, ?, ?, ?, ?, ?)",
-		pipeline.Repository, pipeline.CommitHash, pipeline.IPAddress, pipeline.Name, pipeline.StageOrder, pipeline.Status, pipeline.StartTime,
-	)
-	if err != nil {
-		return 0, fmt.Errorf("CreatePipeline: %v", err)
-	}
-
-	// Get the Id of the newly inserted pipeline
-	pipelineId, err := result.LastInsertId()
-
-	if err != nil {
-		return 0, fmt.Errorf("CreatePipeline: %v", err)
-	}
-
-	return int(pipelineId), nil
-}
-
-// Update pipeline status and end_time
-func (service *PipelineService) UpdatePipelineStatusAndEndTime(pipelineID int, status models.ExecStatus) error {
-	var endTime time.Time = time.Now()
-	result, err := service.db.Exec(
-		"UPDATE Pipelines SET status = ?, end_time = ? WHERE pipeline_id = ?",
-		status, endTime, pipelineID,
-	)
-	if err != nil {
-		return fmt.Errorf("UpdatePipelineStatusAndEndTime: %v", err)
-	}
-
-	// Check if any rows were affected
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("UpdatePipelineStatusAndEndTime: %v", err)
-	}
-	if rowsAffected == 0 {
-		return fmt.Errorf("UpdatePipelineStatusAndEndTime: no pipeline found with ID %d", pipelineID)
-	}
-
-	return nil
 }
 
 // Query pipeline executions by input conditions

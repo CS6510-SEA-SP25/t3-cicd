@@ -3,7 +3,6 @@ package main
 import (
 	"cicd/pipeci/backend/db"
 	"cicd/pipeci/backend/routes"
-	"cicd/pipeci/backend/storage"
 	"log"
 	"net/http"
 
@@ -53,8 +52,8 @@ func main() {
 	// Init database
 	db.Init()
 
-	// Init artifact storage
-	storage.Init()
+	// // Init artifact storage
+	// storage.Init()
 
 	// Setup Gin Router
 	router := setupRouter()

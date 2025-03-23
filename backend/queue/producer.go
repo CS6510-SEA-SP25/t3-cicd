@@ -4,19 +4,25 @@ import (
 	"cicd/pipeci/backend/types"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 // Task struct
 type Task struct {
-	Id      int                            `json:"id"`
+	Id      string                         `json:"id"`
 	Message types.ExecuteLocal_RequestBody `json:"message"`
 }
 
 // Connects to RabbitMQ and returns the connection and channel.
 func ConnectRabbitMQ() (*amqp.Connection, *amqp.Channel, error) {
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	rabbitMQURL := os.Getenv("RABBITMQ_URL")
+	if rabbitMQURL == "" {
+		rabbitMQURL = "amqp://guest:guest@localhost:5672/"
+	}
+
+	conn, err := amqp.Dial(rabbitMQURL)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect to RabbitMQ: %v", err)
 	}
@@ -32,8 +38,12 @@ func ConnectRabbitMQ() (*amqp.Connection, *amqp.Channel, error) {
 
 // Declares a durable queue in RabbitMQ.
 func DeclareQueue(ch *amqp.Channel) (amqp.Queue, error) {
+	taskQueue := os.Getenv("TASK_QUEUE")
+	if taskQueue == "" {
+		taskQueue = "task_queue"
+	}
 	q, err := ch.QueueDeclare(
-		"task_queue",
+		taskQueue,
 		true,  // Durable
 		false, // Auto-delete
 		false, // Exclusive
