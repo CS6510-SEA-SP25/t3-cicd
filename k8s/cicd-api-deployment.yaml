@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: cicd-api
-          image: minh160302/cicd-api:test0.0.2
+          image: minh160302/cicd-api:test0.0.4
           env:
             - name: DB_HOST
               value: mysql
@@ -40,17 +40,14 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: minio-keys
-                  key: accesskey
+                  key: CONSOLE_ACCESS_KEY
             - name: MINIO_SECRET_KEY
               valueFrom:
                 secretKeyRef:
                   name: minio-keys
-                  key: secretkey
-            # - name: MINIO_ENDPOINT
-            #   value: localhost:9000
+                  key: CONSOLE_SECRET_KEY
             - name: MINIO_ENDPOINT
-              # value: minio.minio-tenant.svc.cluster.local:9000
-              value: minio.local
+              value: minio.default.svc.cluster.local
             - name: DEFAULT_BUCKET
               value: default
           ports:

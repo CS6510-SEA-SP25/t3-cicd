@@ -93,16 +93,21 @@ func (service *PipelineService) QueryPipelines(filters map[string]interface{}) (
 	var pipelines []models.Pipeline
 	query := "SELECT * FROM Pipelines"
 	args := make([]interface{}, 0)
-	conditions := make([]string, 0)
+
+	// Sort keys for deterministic query order
+	keys := make([]string, 0, len(filters))
+	for key := range filters {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
 
 	// Build the conditions
-	for key, value := range filters {
+	conditions := make([]string, 0)
+	for _, key := range keys {
+		value := filters[key]
 		conditions = append(conditions, fmt.Sprintf("%s = ?", key))
 		args = append(args, value)
 	}
-
-	// Sort to turn into deterministic order
-	sort.Strings(conditions)
 
 	if len(conditions) > 0 {
 		query += " WHERE " + strings.Join(conditions, " AND ")

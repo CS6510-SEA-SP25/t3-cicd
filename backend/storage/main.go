@@ -20,8 +20,6 @@ func Init() {
 	var secretAccessKey string = os.Getenv("MINIO_SECRET_KEY")
 	var bucket string = os.Getenv("DEFAULT_BUCKET")
 
-	log.Printf("Env var: %v %v %v %v", endpoint, accessKeyID, secretAccessKey, bucket)
-
 	useSSL := false
 
 	// Initialize minio client object.

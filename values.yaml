@@ -102,7 +102,8 @@ tenant:
     annotations: {}
     ###
     # Specify `labels <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`__ to associate to Tenant pods.
-    labels: {}
+    labels:
+      app: minio-pool
 
   ###
   # If this variable is set to true, then enable the usage of an existing Kubernetes secret to set environment variables for the Tenant.
@@ -232,10 +233,10 @@ tenant:
   subPath: /data
   ###
   # Configures a Prometheus-compatible scraping endpoint at the specified port.
-  metrics:
-    enabled: false
-    port: 9000
-    protocol: http
+  # metrics:
+  #   enabled: false
+  #   port: 9000
+  #   protocol: http
   ###
   # Configures external certificate settings for the Tenant.
   certificate:
@@ -299,7 +300,8 @@ tenant:
   # Array of Kubernetes secrets from which the Operator generates MinIO users during tenant provisioning.
   #
   # Each secret should specify the ``CONSOLE_ACCESS_KEY`` and ``CONSOLE_SECRET_KEY`` as the access key and secret key for that user.
-  users: []
+  users: 
+    - name: minio-keys
   ###
   # The `PodManagement <https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#pod-management-policy>`__ policy for MinIO Tenant Pods.
   # Can be "OrderedReady" or "Parallel"
@@ -328,9 +330,9 @@ tenant:
   # - Specify ``console: true`` to expose the Console.
   #
   # Both fields default to ``false``.
-  # exposeServices:
-  #   minio: true
-  #   console: true
+  exposeServices:
+    minio: true
+    console: true
 
   ###
   # The `Kubernetes Service Account <https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/>`__ associated with the Tenant.
@@ -489,19 +491,19 @@ tenant:
 ingress:
   api:
     enabled: true
-    ingressClassName: ""
-    labels: {}
-    annotations: {}
-    tls: []
+    ingressClassName: "nginx"
+    # labels: {}
+    # annotations: {}
+    # tls: []
     host: minio.local
     path: /
     pathType: Prefix
   console:
     enabled: true
-    ingressClassName: ""
-    labels: {}
-    annotations: {}
-    tls: []
+    ingressClassName: "nginx"
+    # labels: {}
+    # annotations: {}
+    # tls: []
     host: minio-console.local
     path: /
     pathType: Prefix
