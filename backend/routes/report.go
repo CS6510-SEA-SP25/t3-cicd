@@ -6,35 +6,17 @@ import (
 	JobService "cicd/pipeci/backend/services/job"
 	PipelineService "cicd/pipeci/backend/services/pipeline"
 	StageService "cicd/pipeci/backend/services/stage"
+	"cicd/pipeci/backend/types"
 	"database/sql"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-type ReportPastExecutionsLocal_CurrentRepo_RequestBody struct {
-	Repository   models.Repository `json:"repository"`
-	IPAddress    string            `json:"ip_address"`
-	PipelineName string            `json:"pipeline_name"`
-	StageName    string            `json:"stage_name"`
-	JobName      string            `json:"job_name"`
-	RunCounter   int               `json:"run_counter"`
-}
-
-type Report_ResponseBody struct {
-	Id        int          `json:"id"`
-	Name      string       `json:"name"`
-	StartTime time.Time    `json:"start_time"`
-	EndTime   sql.NullTime `json:"end_time"`
-	Status    string       `json:"status"`
-	// RunCounter int          `json:"run_counter"`
-}
-
 /* Report all local pipeline executions */
 func ReportPastExecutionsLocal_CurrentRepo(c *gin.Context) {
-	var body ReportPastExecutionsLocal_CurrentRepo_RequestBody
+	var body types.ReportPastExecutionsLocal_CurrentRepo_RequestBody
 	err := c.ShouldBindJSON(&body)
 	if err != nil {
 		return
@@ -54,7 +36,7 @@ func ReportPastExecutionsLocal_CurrentRepo(c *gin.Context) {
 
 /* Query local executions by conditions */
 func ReportPastExecutionsLocal_ByCondition(c *gin.Context) {
-	var body ReportPastExecutionsLocal_CurrentRepo_RequestBody
+	var body types.ReportPastExecutionsLocal_CurrentRepo_RequestBody
 	err := c.ShouldBindJSON(&body)
 	if err != nil {
 		return
@@ -109,7 +91,7 @@ func ReportPastExecutionsLocal_ByCondition(c *gin.Context) {
 /* Get execution reports for pipeline */
 func gatherPipelineReport(c *gin.Context, pipelineFilters map[string]interface{}) {
 	var pipelineService = PipelineService.NewPipelineService(db.Instance)
-	var reports []Report_ResponseBody
+	var reports []types.Report_ResponseBody
 
 	pipelines, err := pipelineService.QueryPipelines(pipelineFilters)
 	parsePipelineReports(pipelines, &reports)
@@ -126,7 +108,7 @@ func gatherPipelineReport(c *gin.Context, pipelineFilters map[string]interface{}
 func gatherStageReport(c *gin.Context, pipelineFilters, stageFilters map[string]interface{}) {
 	var pipelineService = PipelineService.NewPipelineService(db.Instance)
 	var stageService = StageService.NewStageService(db.Instance)
-	var reports []Report_ResponseBody
+	var reports []types.Report_ResponseBody
 	var err error
 
 	// Get PipelineId then GetStagesByPipelineId
@@ -158,7 +140,7 @@ func gatherJobReport(c *gin.Context, pipelineFilters, stageFilters, jobFilters m
 	var pipelineService = PipelineService.NewPipelineService(db.Instance)
 	var stageService = StageService.NewStageService(db.Instance)
 	var jobService = JobService.NewJobService(db.Instance)
-	var reports []Report_ResponseBody
+	var reports []types.Report_ResponseBody
 	var err error
 
 	// Get PipelineId then GetStagesByPipelineId
@@ -196,9 +178,9 @@ func gatherJobReport(c *gin.Context, pipelineFilters, stageFilters, jobFilters m
 
 // ------------ PARSE DATABASE SCHEMA TO REPORTS ---------------- //
 /* Parse pipelines and append to general reports list */
-func parsePipelineReports(pipelines []models.Pipeline, reports *[]Report_ResponseBody) {
+func parsePipelineReports(pipelines []models.Pipeline, reports *[]types.Report_ResponseBody) {
 	for _, pipeline := range pipelines {
-		report := Report_ResponseBody{
+		report := types.Report_ResponseBody{
 			Id:        pipeline.PipelineId,
 			Name:      pipeline.Name,
 			StartTime: pipeline.StartTime,
@@ -215,9 +197,9 @@ func parsePipelineReports(pipelines []models.Pipeline, reports *[]Report_Respons
 }
 
 /* Parse stages and append to general reports list */
-func parseStageReports(stages []models.Stage, reports *[]Report_ResponseBody) {
+func parseStageReports(stages []models.Stage, reports *[]types.Report_ResponseBody) {
 	for _, stage := range stages {
-		report := Report_ResponseBody{
+		report := types.Report_ResponseBody{
 			Id:        stage.StageId,
 			Name:      stage.Name,
 			StartTime: stage.StartTime,
@@ -234,9 +216,9 @@ func parseStageReports(stages []models.Stage, reports *[]Report_ResponseBody) {
 }
 
 /* Parse jobs and append to general reports list */
-func parseJobReports(jobs []models.Job, reports *[]Report_ResponseBody) {
+func parseJobReports(jobs []models.Job, reports *[]types.Report_ResponseBody) {
 	for _, job := range jobs {
-		report := Report_ResponseBody{
+		report := types.Report_ResponseBody{
 			Id:        job.JobId,
 			Name:      job.Name,
 			StartTime: job.StartTime,

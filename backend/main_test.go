@@ -3,9 +3,9 @@ package main
 import (
 	"cicd/pipeci/backend/db"
 	"cicd/pipeci/backend/models"
-	"cicd/pipeci/backend/routes"
 	PipelineService "cicd/pipeci/backend/services/pipeline"
 	"cicd/pipeci/backend/storage"
+	"cicd/pipeci/backend/types"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -79,7 +79,7 @@ func TestExecuteLocal(t *testing.T) {
 	var repository models.Repository = models.Repository{
 		Url: "https://github.com/CS6510-SEA-SP25/t3-cicd.git", CommitHash: "ae47cc929081a0312a54bf85f3f6c232a912e243",
 	}
-	var body = routes.ExecuteLocal_RequestBody{
+	var body = types.ExecuteLocal_RequestBody{
 		Pipeline:   pipeline,
 		Repository: repository,
 	}
@@ -129,7 +129,7 @@ func TestExecuteLocalFailed_InvalidImage(t *testing.T) {
 		Url: "https://github.com/CS6510-SEA-SP25/t3-cicd.git", CommitHash: "ae47cc929081a0312a54bf85f3f6c232a912e243",
 	}
 	// // Create an example user for testing
-	var body = routes.ExecuteLocal_RequestBody{
+	var body = types.ExecuteLocal_RequestBody{
 		Pipeline:   pipeline,
 		Repository: repository,
 	}
@@ -137,7 +137,8 @@ func TestExecuteLocalFailed_InvalidImage(t *testing.T) {
 	req, err := http.NewRequest("POST", "/execute/local", strings.NewReader(string(jsonBody)))
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, 400, w.Code)
+	// assert.Equal(t, 400, w.Code)
+	assert.Equal(t, 200, w.Code) // Async execution returns 200
 	assert.NoError(t, err)
 }
 
@@ -179,7 +180,7 @@ func TestExecuteLocalFailed(t *testing.T) {
 		Url: "https://github.com/CS6510-SEA-SP25/t3-cicd.git", CommitHash: "ae47cc929081a0312a54bf85f3f6c232a912e243",
 	}
 	// // Create an example user for testing
-	var body = routes.ExecuteLocal_RequestBody{
+	var body = types.ExecuteLocal_RequestBody{
 		Pipeline:   pipeline,
 		Repository: repository,
 	}
@@ -187,7 +188,8 @@ func TestExecuteLocalFailed(t *testing.T) {
 	req, err := http.NewRequest("POST", "/execute/local", strings.NewReader(string(jsonBody)))
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, 400, w.Code)
+	// assert.Equal(t, 400, w.Code)
+	assert.Equal(t, 200, w.Code) // Async execution returns 200
 	assert.NoError(t, err)
 }
 
@@ -201,7 +203,7 @@ func TestReportLocal(t *testing.T) {
 	var repository models.Repository = models.Repository{
 		Url: "https://github.com/CS6510-SEA-SP25/t3-cicd.git",
 	}
-	var body = routes.ReportPastExecutionsLocal_CurrentRepo_RequestBody{
+	var body = types.ReportPastExecutionsLocal_CurrentRepo_RequestBody{
 		Repository: repository,
 		IPAddress:  "0.0.0.0",
 	}
@@ -223,7 +225,7 @@ func TestReportPastExecutionsLocal_ByCondition(t *testing.T) {
 	var repository models.Repository = models.Repository{
 		Url: "https://github.com/CS6510-SEA-SP25/t3-cicd.git",
 	}
-	var body = routes.ReportPastExecutionsLocal_CurrentRepo_RequestBody{
+	var body = types.ReportPastExecutionsLocal_CurrentRepo_RequestBody{
 		Repository:   repository,
 		IPAddress:    "0.0.0.0",
 		PipelineName: "name",
@@ -246,7 +248,7 @@ func TestReportStage(t *testing.T) {
 	var repository models.Repository = models.Repository{
 		Url: "https://github.com/CS6510-SEA-SP25/t3-cicd.git",
 	}
-	var body = routes.ReportPastExecutionsLocal_CurrentRepo_RequestBody{
+	var body = types.ReportPastExecutionsLocal_CurrentRepo_RequestBody{
 		Repository:   repository,
 		IPAddress:    "0.0.0.0",
 		PipelineName: "name",
