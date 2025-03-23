@@ -2,13 +2,14 @@
 
 This document contains the tech stack is used for the CI/CD system. Trade-offs for each technology choice are also discussed.
 
-| Component          | Technology Choices |
-| ------------------ | ------------------ |
-| **API**            | Go                 |
-| **Database**       | MySQL              |
-| **Job Execution**  | Docker             |
-| **Cloud Services** | AWS                |
-| **CLI**            | Go Cobra           |
+| Component            | Technology Choices |
+| -------------------- | ------------------ |
+| **API**              | Go                 |
+| **Database**         | MySQL              |
+| **CLI**              | Go Cobra           |
+| **Containers**       | Docker, Kubernetes |
+| **Artifact storage** | MinIO              |
+| **Message Queue**    | RabbitMQ           |
 
 We have considerations for technology choices:
 
