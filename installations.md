@@ -47,12 +47,6 @@ Start the minikube cluster
 minikube start
 ```
 
-Add the `init.sql` file to Config Map
-
-```bash
-kubectl create configmap mysql-init-config --from-file=backend/db/init.sql
-```
-
 Create `k8s/github-secret.yaml` from this template
 
 ```
@@ -68,7 +62,7 @@ data:
 Deploy to minikube
 
 ```bash
-❯ kubectl apply -f k8s
+❯ ./deploy.sh
 ```
 
 To check for status, please run
@@ -76,8 +70,6 @@ To check for status, please run
 ```bash
 ❯ kubectl get pods
 ```
-
-Once all pods runs successfully, we need to expose the k8s deployment at localhost:8080 by using LoadBalancer
 
 Run this on a different terminal window, or consider running it in background.
 
@@ -89,21 +81,25 @@ Check for deployments
 
 ```bash
 ❯ kubectl get deployment
-NAME       READY   UP-TO-DATE   AVAILABLE   AGE
-cicd-api   1/1     1            1           10h
-mysql      1/1     1            1           10h
+NAME             READY   UP-TO-DATE   AVAILABLE   AGE
+cicd-api         1/1     1            1           169m
+minio-operator   2/2     2            2           169m
+mysql            1/1     1            1           169m
 ```
 
-Expose at port 8080
+And check for k8s service
 
 ```bash
-❯ kubectl expose deployment cicd-api --type=LoadBalancer --port=8080
-```
-
-And check for the external IP
-
-```bash
-kubectl get svc
+❯ kubectl get svc
+NAME               TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+cicd-api-service   LoadBalancer   10.100.13.91     <pending>     8080:32006/TCP   169m
+kubernetes         ClusterIP      10.96.0.1        <none>        443/TCP          169m
+minio              LoadBalancer   10.96.130.139    <pending>     80:32564/TCP     168m
+myminio-console    LoadBalancer   10.111.6.120     <pending>     9090:31710/TCP   168m
+myminio-hl         ClusterIP      None             <none>        9000/TCP         168m
+mysql              ClusterIP      10.100.47.5      <none>        3306/TCP         169m
+operator           ClusterIP      10.109.211.246   <none>        4221/TCP         169m
+sts                ClusterIP      10.105.151.58    <none>        4223/TCP         169m
 ```
 
 To verify the API, please check the endpoint
@@ -112,32 +108,7 @@ To verify the API, please check the endpoint
 http://REPLACE_WITH_EXTERNAL_IP:8080
 ```
 
-For our application, go to `http://localhost:8080` to ping the server.
+For our application,
 
-#### 3. Docker compose
-
-Alternatively, you can update `docker-compose.yaml` and use it a your own risk as we won't maintain this file going forward.
-
-Run the backend server and MySQL database on with docker-compose. At the root directory:
-
-```bash
-❯ docker-compose up -d
-```
-
-To verify the backend is working:
-
-```bash
-❯ pipeci report --local
-pipeci: Using input configuration file at .pipelines/pipeline.yaml
-pipeci: Pipeline Details:
-pipeci:   Commit Hash: fc632d88dfbe004cda2153f3244f9272a8f4d893
-pipeci:   Name: maven_project_1
-pipeci:   Repository: https://github.com/CS6510-SEA-SP25/hw3-minh160302.git
-pipeci:   Pipeline ID: 1
-pipeci:   Status: SUCCESS
-pipeci:   Start Time: 2025-02-24T01:16:15Z
-pipeci:   End Time: 2025-02-24T01:17:07Z
-pipeci:   IP Address: 0.0.0.0
-pipeci:   Stage Order: verify
-pipeci: ----------------------------------------
-```
+- `http://localhost:8080` to ping the server.
+- `http://localhost:9090` to access the MinIO Console.
