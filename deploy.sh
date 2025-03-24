@@ -5,7 +5,7 @@
 # set -x
 
 echo "Install the Operator..."
-helm install --namespace default minio-operator ./operator
+helm install --namespace default minio-operator ./minio/operator
 echo "---------------------"
 
 echo "Verify the Operator installation..."
@@ -13,7 +13,7 @@ kubectl get all
 echo "---------------------"
 
 echo "Deploy the Tenant..."
-helm install --namespace default --values values.yaml myminio minio-operator/tenant
+helm install --namespace default --values ./minio/values.yaml myminio minio-operator/tenant
 echo "---------------------"
 
 echo "Add SQL file to ConfigMap..."

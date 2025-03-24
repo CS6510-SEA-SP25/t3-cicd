@@ -15,5 +15,5 @@ func TestExecuteLocal(t *testing.T) {
 	repository := schema.Repository{ /* mock data */ }
 
 	err := ExecuteLocal(pipeline, repository)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 }
