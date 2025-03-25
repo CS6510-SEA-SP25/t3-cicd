@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cicd-api
+  name: worker-api
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: cicd-api
+      app: worker-api
   template:
     metadata:
       labels:
-        app: cicd-api
+        app: worker-api
     spec:
       containers:
-        - name: cicd-api
-          image: minh160302/cicd-api:v0.0.4-patch-1
+        - name: worker-api
+          image: minh160302/worker-api:v0.0.4-patch-1
           env:
             - name: DB_HOST
               value: mysql
@@ -56,7 +56,7 @@ spec:
             - name: TASK_QUEUE
               value: task_queue
           ports:
-            - containerPort: 8080
+            - containerPort: 8081
           volumeMounts:
             - name: docker-sock
               mountPath: /var/run/docker.sock
@@ -69,12 +69,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: cicd-api-service
+  name: worker-api-service
 spec:
   selector:
-    app: cicd-api
+    app: worker-api
   ports:
     - protocol: TCP
-      port: 8080
-      targetPort: 8080
+      port: 8081
+      targetPort: 8081
   type: LoadBalancer

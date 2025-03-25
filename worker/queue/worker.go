@@ -17,26 +17,26 @@ type Task struct {
 	Message types.ExecuteLocal_RequestBody `json:"message"`
 }
 
-// Connects to RabbitMQ and returns the connection and channel.
-func ConnectRabbitMQ() (*amqp.Connection, *amqp.Channel, error) {
-	rabbitMQURL := os.Getenv("RABBITMQ_URL")
-	if rabbitMQURL == "" {
-		rabbitMQURL = "amqp://guest:guest@localhost:5672/"
-	}
+// // Connects to RabbitMQ and returns the connection and channel.
+// func ConnectRabbitMQ() (*amqp.Connection, *amqp.Channel, error) {
+// 	rabbitMQURL := os.Getenv("RABBITMQ_URL")
+// 	if rabbitMQURL == "" {
+// 		rabbitMQURL = "amqp://guest:guest@localhost:5672/"
+// 	}
 
-	conn, err := amqp.Dial(rabbitMQURL)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to connect to RabbitMQ: %v", err)
-	}
+// 	conn, err := amqp.Dial(rabbitMQURL)
+// 	if err != nil {
+// 		return nil, nil, fmt.Errorf("failed to connect to RabbitMQ: %v", err)
+// 	}
 
-	ch, err := conn.Channel()
-	if err != nil {
-		conn.Close()
-		return nil, nil, fmt.Errorf("failed to open a channel: %v", err)
-	}
+// 	ch, err := conn.Channel()
+// 	if err != nil {
+// 		conn.Close()
+// 		return nil, nil, fmt.Errorf("failed to open a channel: %v", err)
+// 	}
 
-	return conn, ch, nil
-}
+// 	return conn, ch, nil
+// }
 
 // Declares a durable queue in RabbitMQ.
 func DeclareQueue(ch *amqp.Channel, queueName string) (amqp.Queue, error) {
