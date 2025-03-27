@@ -8,9 +8,9 @@ echo "Install the Operator..."
 helm install --namespace default minio-operator ./minio/operator
 echo "---------------------"
 
-echo "Verify the Operator installation..."
-kubectl get all
-echo "---------------------"
+# echo "Verify the Operator installation..."
+# kubectl get all
+# echo "---------------------"
 
 echo "Deploy the Tenant..."
 helm install --namespace default --values ./minio/values.yaml myminio minio-operator/tenant

@@ -16,17 +16,21 @@ spec:
         - name: pool-api
           image: minh160302/pool-api
           env:
+            # MySQL
             - name: DB_HOST
-              value: mysql
+              value: mycluster
             - name: DB_PORT
               value: "3306"
             - name: DB_USER
-              value: root
+              valueFrom:
+                secretKeyRef:
+                  name: mycluster-cluster-secret
+                  key: rootUser
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: mysql-secret
-                  key: MYSQL_ROOT_PASSWORD
+                  name: mycluster-cluster-secret
+                  key: rootPassword
             - name: DB_NAME
               value: CicdApplication
             # GitHub
