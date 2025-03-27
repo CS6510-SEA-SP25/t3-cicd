@@ -8,6 +8,7 @@ import (
 	"os"
 
 	KubernetesService "cicd/pipeci/pool/k8s"
+
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 

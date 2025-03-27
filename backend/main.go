@@ -52,9 +52,6 @@ func main() {
 	// Init database
 	db.Init()
 
-	// // Init artifact storage
-	// storage.Init()
-
 	// Setup Gin Router
 	router := setupRouter()
 

@@ -11,8 +11,8 @@ drop table if exists Pipelines;
 CREATE TABLE Pipelines (
 	pipeline_id int auto_increment,						            -- Pipeline Execution Id								
 	repository varchar(255) not null,					            -- Repository this pipeline is running on
-    commit_hash varchar(255) not null default "HEAD",	            -- Git commit hash
-    ip_address varchar(255) not null default "0.0.0.0",	            -- IP address where the pipeline is executed
+    commit_hash varchar(255) not null default 'HEAD',	            -- Git commit hash
+    ip_address varchar(255) not null default '0.0.0.0',	            -- IP address where the pipeline is executed
     
     name varchar(255) not null,							            -- Pipeline name
     stage_order varchar(1000) not null,					            -- Stage execution order

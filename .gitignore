@@ -1,5 +1,9 @@
 # k8s
 k8s/github-secret.yaml
+k8s/mysql-secret.yaml
+
+
+ca.pem
 
 *.txt
 *.html

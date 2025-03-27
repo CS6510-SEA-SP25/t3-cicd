@@ -15,20 +15,33 @@ spec:
       containers:
         - name: pool-api
           image: minh160302/pool-api
+          resources:
+              requests:
+                memory: "64Mi"
+                cpu: "500m"
+              limits:
+                memory: "128Mi"
+                cpu: "1000m"
           env:
+            # MySQL
             - name: DB_HOST
-              value: mysql
+              value: "mysql-3a59b330-auction-mysql.f.aivencloud.com"
             - name: DB_PORT
-              value: "3306"
+              value: "15718"
             - name: DB_USER
-              value: root
+              value: "avnadmin"
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: mysql-secret
-                  key: MYSQL_ROOT_PASSWORD
+                  key: DB_PASSWORD
             - name: DB_NAME
               value: CicdApplication
+            # Aiven SSL
+            - name: DB_SSL_MODE
+              value: "true"
+            - name: DB_SSL_CA
+              value: "/etc/ssl/certs/ca.pem"
             # GitHub
             - name: GITHUB_TOKEN
               valueFrom:
@@ -60,11 +73,17 @@ spec:
           volumeMounts:
             - name: docker-sock
               mountPath: /var/run/docker.sock
+            - name: ca-cert
+              mountPath: /etc/ssl/certs/ca.pem
+              subPath: ca.pem
       volumes:
         - name: docker-sock
           hostPath:
             path: /var/run/docker.sock
             type: Socket
+        - name: ca-cert
+          secret:
+            secretName: db-ca-cert
 ---
 apiVersion: v1
 kind: Service

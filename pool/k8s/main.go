@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"math/rand"
@@ -12,11 +13,21 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
+
+// k8s config
+var kubeconfig *string
 
 // https://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-go
 func init() {
 	rand.Seed(time.Now().UnixNano())
+
+	// Ensure the flag is defined only once
+	if flag.Lookup("kubeconfig") == nil {
+		kubeconfig = flag.String("kubeconfig", os.Getenv("HOME")+"/.kube/config", "Path to kubeconfig file")
+		flag.Parse()
+	}
 }
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz0123456789")
@@ -31,8 +42,22 @@ func RandStringRunes(n int) string {
 
 // LoadKubeConfig loads the kubeconfig file to configure the connection to the Kubernetes cluster.
 func loadKubeConfig() (*kubernetes.Clientset, error) {
+	var config *rest.Config
+	var err error
+
 	// creates the in-cluster config
-	config, err := rest.InClusterConfig()
+	// config, err = rest.InClusterConfig()
+
+	// Check if running inside Kubernetes
+	if _, inCluster := os.LookupEnv("KUBERNETES_SERVICE_HOST"); inCluster {
+		fmt.Println("Running inside Kubernetes cluster...")
+		config, err = rest.InClusterConfig()
+	} else {
+		fmt.Println("Running outside Kubernetes, using kubeconfig...")
+
+		config, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	}
+
 	if err != nil {
 		panic(err.Error())
 	}
@@ -102,6 +127,9 @@ func createPod(clientset *kubernetes.Clientset, podName, namespace, image string
 					Args:         args,
 					Env:          envs,
 					VolumeMounts: []corev1.VolumeMount{volumeMount},
+					// Resources: corev1.ResourceRequirements{
+
+					// },
 				},
 			},
 			Volumes: []corev1.Volume{volume}, // Attach volume to the pod
@@ -131,7 +159,7 @@ func CreateWorkerInstance(args []string) {
 	// Define your arguments and image for the container
 	podName := "worker-api-pod-" + RandStringRunes(8)
 	namespace := "default"
-	image := "minh160302/worker-api:test0.1.1" // Specify your image, like in `docker run worker-api`
+	image := "minh160302/worker-api" // Specify your image, like in `docker run worker-api`
 
 	// Load the kubeconfig and create the clientset
 	clientset, err := loadKubeConfig()
