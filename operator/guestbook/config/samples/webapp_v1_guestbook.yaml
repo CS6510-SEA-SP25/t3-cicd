@@ -1,0 +1,10 @@
+apiVersion: webapp.cicd.operator/v1
+kind: Guestbook
+metadata:
+  labels:
+    app.kubernetes.io/name: guestbook
+    app.kubernetes.io/managed-by: kustomize
+  name: guestbook-sample
+spec:
+  # TODO(user): Add fields here
+  
