@@ -44,7 +44,7 @@ jobs:
     name: CLI - Test and Coverage
     runs-on: ubuntu-latest
     env:
-      DB_DATABASE: CicdApplication
+      DB_NAME: CicdApplication
       DB_USER: root
       DB_PASSWORD: root
       DB_HOST: localhost
@@ -92,7 +92,7 @@ jobs:
       - name: Set up MySQL
         run: |
           sudo systemctl start mysql
-          mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
+          mysql -e 'CREATE DATABASE ${{ env.DB_NAME }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
       # Redis
       - name: Start Redis with Password
         run: |
@@ -113,7 +113,7 @@ jobs:
           redis-cli -a ${{ env.REDIS_PASSWORD }} ping
       - name: Apply SQL File
         working-directory: ./backend # Change if your SQL file is elsewhere
-        run: ls && mysql -u root -p"${{ env.DB_PASSWORD }}" ${{ env.DB_DATABASE }} < ./db/init.sql
+        run: ls && mysql -u root -p"${{ env.DB_PASSWORD }}" ${{ env.DB_NAME }} < ./db/init.sql
       # Run tests
       - name: Run local api for CLI testing
         working-directory: ./backend
@@ -213,7 +213,7 @@ jobs:
         shell: bash
         working-directory: ./backend
     env:
-      DB_DATABASE: CicdApplication
+      DB_NAME: CicdApplication
       DB_USER: root
       DB_PASSWORD: root
       DB_HOST: localhost
@@ -237,7 +237,7 @@ jobs:
       - name: Set up MySQL
         run: |
           sudo systemctl start mysql
-          mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
+          mysql -e 'CREATE DATABASE ${{ env.DB_NAME }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
       # RabbitMQ
       - name: Start RabbitMQ in Background
         run: docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:4.0-management
@@ -267,7 +267,7 @@ jobs:
           path: ./backend/db/
       - name: Apply SQL File
         working-directory: ./backend # Change if your SQL file is elsewhere
-        run: mysql -u root -p"${{ env.DB_PASSWORD }}" ${{ env.DB_DATABASE }} < ./db/init.sql
+        run: mysql -u root -p"${{ env.DB_PASSWORD }}" ${{ env.DB_NAME }} < ./db/init.sql
       - name: Generate executable
         run: chmod +x coverage.sh
       - name: Create Env var
@@ -354,7 +354,7 @@ jobs:
         shell: bash
         working-directory: ./worker
     env:
-      DB_DATABASE: CicdApplication
+      DB_NAME: CicdApplication
       DB_USER: root
       DB_PASSWORD: root
       DB_HOST: localhost
@@ -396,7 +396,7 @@ jobs:
       - name: Set up MySQL
         run: |
           sudo systemctl start mysql
-          mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
+          mysql -e 'CREATE DATABASE ${{ env.DB_NAME }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
       # Redis
       - name: Start Redis with Password
         run: |
@@ -423,7 +423,7 @@ jobs:
           path: ./worker/db/
       - name: Apply SQL File
         working-directory: ./worker # Change if your SQL file is elsewhere
-        run: mysql -u root -p"${{ env.DB_PASSWORD }}" ${{ env.DB_DATABASE }} < ./db/init.sql
+        run: mysql -u root -p"${{ env.DB_PASSWORD }}" ${{ env.DB_NAME }} < ./db/init.sql
       - name: Generate executable
         run: chmod +x coverage.sh
       - name: Create Env var

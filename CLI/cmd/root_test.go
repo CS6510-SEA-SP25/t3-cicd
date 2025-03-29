@@ -231,7 +231,6 @@ func TestDryRunTwo(t *testing.T) {
 
 /*
 Test `run` subcommand
-TODO: In later sprint, develop a background job to clean up leftover testing/trash containers
 */
 func TestRun(t *testing.T) {
 	// Capture log output

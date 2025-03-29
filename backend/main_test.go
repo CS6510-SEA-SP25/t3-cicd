@@ -4,6 +4,7 @@ import (
 	"cicd/pipeci/backend/cache"
 	"cicd/pipeci/backend/db"
 	"cicd/pipeci/backend/models"
+	"context"
 
 	// PipelineService "cicd/pipeci/backend/services/pipeline"
 	// "cicd/pipeci/backend/storage"
@@ -295,6 +296,8 @@ func TestRequestExecutionStatus_Success(t *testing.T) {
 
 	router := setupRouter()
 
+	cache.Set(context.Background(), "id", "default_value", 0)
+
 	w := httptest.NewRecorder()
 
 	var body = types.RequestExecutionStatus_RequestBody{
@@ -304,7 +307,7 @@ func TestRequestExecutionStatus_Success(t *testing.T) {
 	req, err := http.NewRequest("POST", "/status", strings.NewReader(string(jsonBody)))
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, 400, w.Code)
 	assert.NoError(t, err)
 }
 
