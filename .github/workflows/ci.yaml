@@ -92,8 +92,23 @@ jobs:
           sudo systemctl start mysql
           mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
       # Redis
-      - name: Start Redis
-        run: docker run -d --name redis -p 6379:6379 -e REDIS_PASSWORD=${{ env.REDIS_PASSWORD }} redis:alpine /bin/sh -c 'redis-server --requirepass "$$REDIS_PASSWORD"'
+      - name: Start Redis with Password
+        run: |
+          # Install Redis
+          sudo apt-get update
+          sudo apt-get install -y redis-server
+
+          # Create a Redis configuration file
+          echo "requirepass ${{ env.REDIS_PASSWORD }}" > redis.conf
+
+          # Start Redis with the configuration
+          redis-server redis.conf & 
+
+          # Wait for Redis to start
+          sleep 5
+
+          # Verify Redis is running with password
+          redis-cli -a ${{ env.REDIS_PASSWORD }} ping
       - name: Apply SQL File
         working-directory: ./backend # Change if your SQL file is elsewhere
         run: ls && mysql -u root -p"${{ env.DB_PASSWORD }}" ${{ env.DB_DATABASE }} < ./db/init.sql
@@ -223,8 +238,23 @@ jobs:
       - name: Start RabbitMQ in Background
         run: docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:4.0-management
       # Redis
-      - name: Start Redis
-        run: docker run -d --name redis -p 6379:6379 -e REDIS_PASSWORD=${{ env.REDIS_PASSWORD }} redis:alpine /bin/sh -c 'redis-server --requirepass "$$REDIS_PASSWORD"'
+      - name: Start Redis with Password
+        run: |
+          # Install Redis
+          sudo apt-get update
+          sudo apt-get install -y redis-server
+
+          # Create a Redis configuration file
+          echo "requirepass ${{ env.REDIS_PASSWORD }}" > redis.conf
+
+          # Start Redis with the configuration
+          redis-server redis.conf & 
+
+          # Wait for Redis to start
+          sleep 5
+
+          # Verify Redis is running with password
+          redis-cli -a ${{ env.REDIS_PASSWORD }} ping
       # Download and apply SQL file
       - name: Download SQL file
         uses: actions/download-artifact@v4
@@ -362,8 +392,23 @@ jobs:
           sudo systemctl start mysql
           mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
       # Redis
-      - name: Start Redis
-        run: docker run -d --name redis -p 6379:6379 -e REDIS_PASSWORD=${{ env.REDIS_PASSWORD }} redis:alpine /bin/sh -c 'redis-server --requirepass "${{ env.REDIS_PASSWORD }}"'
+      - name: Start Redis with Password
+        run: |
+          # Install Redis
+          sudo apt-get update
+          sudo apt-get install -y redis-server
+
+          # Create a Redis configuration file
+          echo "requirepass ${{ env.REDIS_PASSWORD }}" > redis.conf
+
+          # Start Redis with the configuration
+          redis-server redis.conf & 
+
+          # Wait for Redis to start
+          sleep 5
+
+          # Verify Redis is running with password
+          redis-cli -a ${{ env.REDIS_PASSWORD }} ping
       # Download and apply SQL file
       - name: Download SQL file
         uses: actions/download-artifact@v4
