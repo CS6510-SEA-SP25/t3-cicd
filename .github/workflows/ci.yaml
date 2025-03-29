@@ -363,7 +363,7 @@ jobs:
           mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
       # Redis
       - name: Start Redis
-        run: docker run -d --name redis -p 6379:6379 -e REDIS_PASSWORD=${{ env.REDIS_PASSWORD }} redis:alpine /bin/sh -c 'redis-server --requirepass "$$REDIS_PASSWORD"'
+        run: docker run -d --name redis -p 6379:6379 -e REDIS_PASSWORD=${{ env.REDIS_PASSWORD }} redis:alpine /bin/sh -c 'redis-server --requirepass "${{ env.REDIS_PASSWORD }}"'
       # Download and apply SQL file
       - name: Download SQL file
         uses: actions/download-artifact@v4
