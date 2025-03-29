@@ -55,17 +55,6 @@ jobs:
       DEFAULT_BUCKET: test-bucket
       REDIS_USERNAME: default
       REDIS_PASSWORD: password
-    services:
-      redis:
-        image: redis
-        options: >-
-          --health-cmd "redis-cli --user default --pass password ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        env:
-          REDIS_USER: default
-          REDIS_PASSWORD: password
     defaults:
       run:
         shell: bash

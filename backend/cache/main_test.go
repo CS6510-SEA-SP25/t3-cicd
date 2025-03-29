@@ -40,8 +40,8 @@ func TestInit(t *testing.T) {
 		oldInstance := instance
 
 		// Set auth credentials
-		os.Setenv("REDIS_USERNAME", "")
-		os.Setenv("REDIS_PASSWORD", "")
+		os.Setenv("REDIS_USERNAME", "default")
+		os.Setenv("REDIS_PASSWORD", "password")
 		defer func() {
 			os.Unsetenv("REDIS_USERNAME")
 			os.Unsetenv("REDIS_PASSWORD")
