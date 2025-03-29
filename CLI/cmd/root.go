@@ -36,6 +36,10 @@ var (
 	reportStageName    string
 	reportJobName      string
 
+	// statusSubFlags
+	statusExecId string
+
+	// Config var
 	pipeline schema.PipelineConfiguration
 
 	GlobalDirectory string = "." // Current directory
@@ -179,9 +183,7 @@ func HandleFilenameFlag() error {
 	// Default filename if not provided
 	if filename == "" {
 		filename = ".pipelines/pipeline.yaml"
-		log.Printf("Using default configuration file at %v\n", filename)
-	} else {
-		log.Printf("Using input configuration file at %v\n", filename)
+		// log.Printf("Using default configuration file at %v\n", filename)
 	}
 
 	// Check file exists
@@ -308,7 +310,7 @@ var RunCmd = &cobra.Command{
 			return err
 		}
 
-		// TODO 1: --local: pull image and run
+		// TODO 1: --local: 
 		// TODO 2: no local: run the deployed version
 		if isLocal {
 			var repository schema.Repository
@@ -363,6 +365,29 @@ var ReportCmd = &cobra.Command{
 	},
 }
 
+// Sub-command: pipeci status
+var StatusCmd = &cobra.Command{
+	Use:           "status",
+	Short:         "usage: pipeci status --exec-id <exec-id>",
+	Long:          "Show execution status of the whole pipeline",
+	SilenceUsage:  true,
+	SilenceErrors: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		err := mandatoryProcess(cmd)
+		if err != nil {
+			return err
+		}
+
+		if statusExecId == "" {
+			return fmt.Errorf("must specify status execution id")
+		} else {
+			err = apis.GetExecutionStatus(statusExecId)
+		}
+
+		return err
+	},
+}
+
 // Init function
 func init() {
 	// --filename | -f
@@ -396,11 +421,17 @@ func init() {
 	// report --run 2
 	ReportCmd.Flags().IntVar(&reportRunCounter, "run", 0, "Run number i-th for a specified pipeline name")
 
+	// status --exec-id execId
+	StatusCmd.Flags().StringVar(&statusExecId, "exec-id", "", "An UUID to specify a pipeline during execution.")
+
 	// run
 	RootCmd.AddCommand(RunCmd)
 
 	// report
 	RootCmd.AddCommand(ReportCmd)
+
+	// status
+	RootCmd.AddCommand(StatusCmd)
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

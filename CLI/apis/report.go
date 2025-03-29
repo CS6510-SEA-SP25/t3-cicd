@@ -105,13 +105,50 @@ func generateReports(rawData interface{}) error {
 
 // Print details of a single pipeline execution report
 func logExecutionReport(input Report_ResponseBody) error {
-	log.Printf("	Name: %s\n", input.Name)
-	log.Printf("	ID: %v\n", input.Id)
-	log.Printf("	Status: %s\n", input.Status)
-	log.Printf("	Start Time: %s\n", input.StartTime)
-	log.Printf("	End Time: %s\n", input.EndTime.Time)
-	log.Println("	----------------------------------------")
+	// Calculate duration if both times exist
+	duration := ""
+	if !input.StartTime.IsZero() && !input.EndTime.Time.IsZero() {
+		duration = fmt.Sprintf("(Duration: %v)", input.EndTime.Time.Sub(input.StartTime).Round(time.Second))
+	}
+
+	// Colorize status
+	status := fmtStatus(input.Status)
+
+	// Create the formatted output
+	output := fmt.Sprintf(`
+╔═══════════════════════════════════════════════════
+║ 🚀 PIPELINE EXECUTION REPORT
+╟───────────────────────────────────────────────────
+║ 📛 Name:       %s
+║ 🆔 ID:         %v
+║ 🏷️ Status:     %s
+║ 🕒 Start Time: %s
+║ 🕓 End Time:   %s %s
+╚═══════════════════════════════════════════════════`,
+		input.Name,
+		input.Id,
+		status,
+		input.StartTime.Format("2006-01-02 15:04:05 MST"),
+		input.EndTime.Time.Format("2006-01-02 15:04:05 MST"),
+		duration,
+	)
+
+	log.Println(output)
 	return nil
+}
+
+// Helper function to colorize status
+func fmtStatus(status string) string {
+	switch strings.ToUpper(status) {
+	case "SUCCESS":
+		return "\033[32m✔ " + status + "\033[0m" // Green check
+	case "FAILED":
+		return "\033[31m✘ " + status + "\033[0m" // Red X
+	case "RUNNING":
+		return "\033[33m↻ " + status + "\033[0m" // Yellow arrow
+	default:
+		return "➔ " + status // Default arrow
+	}
 }
 
 // Convert interface{} to []Report_ResponseBody

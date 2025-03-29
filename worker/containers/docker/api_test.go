@@ -1,6 +1,7 @@
 package DockerService
 
 import (
+	"cicd/pipeci/worker/cache"
 	"cicd/pipeci/worker/db"
 	"cicd/pipeci/worker/models"
 	"cicd/pipeci/worker/storage"
@@ -164,6 +165,8 @@ func cleanUpAfterTest(dc *DockerClient) error {
 func TestExecute(t *testing.T) {
 	db.Init()
 	storage.Init()
+	cache.Init()
+
 	dc, err := initDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()
@@ -195,7 +198,7 @@ func TestExecute(t *testing.T) {
 		},
 	}
 
-	err = Execute(pipeline, models.Repository{
+	err = Execute("id", pipeline, models.Repository{
 		Url: "https://github.com/CS6510-SEA-SP25/t3-cicd.git", CommitHash: "ae47cc929081a0312a54bf85f3f6c232a912e243",
 	})
 	assert.NoError(t, err)
@@ -209,6 +212,8 @@ func TestExecute(t *testing.T) {
 func TestExecuteFailed(t *testing.T) {
 	db.Init()
 	storage.Init()
+	cache.Init()
+
 	dc, err := initDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()
@@ -240,7 +245,7 @@ func TestExecuteFailed(t *testing.T) {
 		},
 	}
 
-	err = Execute(pipeline, models.Repository{})
+	err = Execute("id", pipeline, models.Repository{})
 	if err == nil {
 		t.Errorf("expected an error but got none")
 	} else {
@@ -254,6 +259,8 @@ func TestExecuteFailed(t *testing.T) {
 func TestExecuteFailed_InvalidCommand(t *testing.T) {
 	db.Init()
 	storage.Init()
+	cache.Init()
+
 	dc, err := initDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()
@@ -285,7 +292,7 @@ func TestExecuteFailed_InvalidCommand(t *testing.T) {
 		},
 	}
 
-	err = Execute(pipeline, models.Repository{})
+	err = Execute("id", pipeline, models.Repository{})
 	if err == nil {
 		t.Errorf("expected an error but got none")
 	} else {
@@ -299,6 +306,8 @@ func TestExecuteFailed_InvalidCommand(t *testing.T) {
 func TestExecuteFailed_TerminatedJobs(t *testing.T) {
 	db.Init()
 	storage.Init()
+	cache.Init()
+	
 	dc, err := initDockerClient()
 	assert.NoError(t, err)
 	defer dc.Close()
@@ -349,7 +358,7 @@ func TestExecuteFailed_TerminatedJobs(t *testing.T) {
 		},
 	}
 
-	err = Execute(pipeline, models.Repository{})
+	err = Execute("id", pipeline, models.Repository{})
 	if err == nil {
 		t.Errorf("expected an error but got none")
 	} else {

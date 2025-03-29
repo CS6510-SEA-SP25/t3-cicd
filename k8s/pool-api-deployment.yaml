@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pool-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pool-api
+  template:
+    metadata:
+      labels:
+        app: pool-api
+    spec:
+      containers:
+        - name: pool-api
+          image: minh160302/pool-api
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "500m"
+            limits:
+              memory: "128Mi"
+              cpu: "1000m"
+          env:
+            # MySQL
+            - name: DB_HOST
+              value: "mysql-3a59b330-auction-mysql.f.aivencloud.com"
+            - name: DB_PORT
+              value: "15718"
+            - name: DB_USER
+              value: "avnadmin"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: DB_PASSWORD
+            - name: DB_NAME
+              value: CicdApplication
+            # Aiven SSL
+            - name: DB_SSL_MODE
+              value: "true"
+            - name: DB_SSL_CA
+              value: "/etc/ssl/certs/ca.pem"
+            # GitHub
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: github-secret
+                  key: token
+            # MinIO
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-keys
+                  key: CONSOLE_ACCESS_KEY
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-keys
+                  key: CONSOLE_SECRET_KEY
+            - name: MINIO_ENDPOINT
+              value: minio.default.svc.cluster.local
+            - name: DEFAULT_BUCKET
+              value: default
+            # RabbitMQ
+            - name: RABBITMQ_URL
+              value: amqp://guest:guest@rabbitmq:5672/
+            - name: TASK_QUEUE
+              value: task_queue
+            # Redis
+            - name: REDIS_HOST
+              value: "redis-14178.c258.us-east-1-4.ec2.redns.redis-cloud.com"
+            - name: REDIS_PORT
+              value: "14178"
+            - name: REDIS_USERNAME
+              value: "default"
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-secret
+                  key: REDIS_PASSWORD
+          ports:
+            - containerPort: 8081
+          volumeMounts:
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+            - name: ca-cert
+              mountPath: /etc/ssl/certs/ca.pem
+              subPath: ca.pem
+      volumes:
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket
+        - name: ca-cert
+          secret:
+            secretName: db-ca-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pool-api-service
+spec:
+  selector:
+    app: pool-api
+  ports:
+    - protocol: TCP
+      port: 8081
+      targetPort: 8081
+  type: LoadBalancer

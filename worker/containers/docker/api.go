@@ -3,6 +3,7 @@ package DockerService
 
 import (
 	"bytes"
+	"cicd/pipeci/worker/cache"
 	"cicd/pipeci/worker/db"
 	"cicd/pipeci/worker/models"
 	JobService "cicd/pipeci/worker/services/job"
@@ -209,6 +210,12 @@ func (dc *DockerClient) handlePostExecution(containerId string) error {
 	return nil
 }
 
+/* Match execution key-value pair  */
+func matchExecutionIdToPipeline(executionId string, pipelineId int) {
+	ctx := context.Background()
+	cache.Set(ctx, executionId, pipelineId, 0)
+}
+
 /*
 Execute jobs in Docker containers
 Revisions:
@@ -261,7 +268,7 @@ Execute a pipeline and store reports
 TODO #1: Allow failures and update status for failed jobs
 TODO #2: Force stop job(s)
 */
-func Execute(pipeline models.PipelineConfiguration, repository models.Repository) error {
+func Execute(executionId string, pipeline models.PipelineConfiguration, repository models.Repository) error {
 	// Service instance
 	var pipelineService = PipelineService.NewPipelineService(db.Instance)
 	var stageService = StageService.NewStageService(db.Instance)
@@ -286,6 +293,9 @@ func Execute(pipeline models.PipelineConfiguration, repository models.Repository
 	if err != nil {
 		return err
 	}
+
+	// Put K-V pair to Redis
+	matchExecutionIdToPipeline(executionId, pipelineReportId)
 
 	var pipelineHasFailedStages bool = false
 	var pipelineHasCanceledStages bool = false

@@ -182,6 +182,7 @@ operator:
   # If no worker nodes can meet the specified requests, the Operator may fail to deploy.
   resources:
     requests:
-      cpu: 200m
-      memory: 256Mi
+      cpu: 500m
+      memory: 5Gi
+      # memory: 256Mi
       ephemeral-storage: 500Mi

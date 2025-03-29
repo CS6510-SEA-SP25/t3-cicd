@@ -2,7 +2,7 @@
 
 set -x
 
-# export DB_PASSWORD=16032002
+# export DB_PASSWORD=root
 
 # # Clean test cache
 # go clean -testcache

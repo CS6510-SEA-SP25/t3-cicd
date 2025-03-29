@@ -5,7 +5,7 @@
 # set -x
 
 echo "Install the Operator..."
-helm install --namespace default minio-operator ./minio/operator
+helm install minio-operator ./minio/operator
 echo "---------------------"
 
 echo "Verify the Operator installation..."
@@ -13,11 +13,11 @@ kubectl get all
 echo "---------------------"
 
 echo "Deploy the Tenant..."
-helm install --namespace default --values ./minio/values.yaml myminio minio-operator/tenant
+helm install --values ./minio/values.yaml myminio minio-operator/tenant
 echo "---------------------"
 
-echo "Add SQL file to ConfigMap..."
-kubectl create configmap mysql-init-config --from-file=backend/db/init.sql
+echo "Add CA Certificate to Secret..."
+kubectl create secret generic db-ca-cert --from-file=ca.pem
 echo "---------------------"
 
 echo "Apply k8s..."

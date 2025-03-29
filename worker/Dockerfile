@@ -18,6 +18,10 @@ WORKDIR /root/
 
 COPY --from=builder /app/app .
 
-EXPOSE 8081
+# CMD ["./app"]
 
-CMD ["./app"]
+# Ensure the Go binary can accept flags/args passed to docker run
+ENTRYPOINT ["/root/app"]
+
+# Set CMD to pass additional arguments. These can be overridden at runtime.
+CMD []
