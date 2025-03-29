@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cicd/pipeci/worker/cache"
 	DockerService "cicd/pipeci/worker/containers/docker"
 	"cicd/pipeci/worker/db"
 	"cicd/pipeci/worker/storage"
@@ -30,7 +31,7 @@ func processTask(jsonInput string) error {
 	log.Printf("[Worker] JSON parsed done.")
 
 	// Execute the Docker service
-	err := DockerService.Execute(task.Message.Pipeline, task.Message.Repository)
+	err := DockerService.Execute(task.Id, task.Message.Pipeline, task.Message.Repository)
 	if err != nil {
 		log.Printf("[Worker] Error executing pipeline: %v", err)
 		return err
@@ -53,6 +54,9 @@ func main() {
 
 	// Init artifact storage
 	storage.Init()
+
+	// Init cache
+	cache.Init()
 
 	// Parse command-line flags
 	jsonInput := flag.String("task", "", "Task JSON input")

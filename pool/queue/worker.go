@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 
+	// "os/exec"
 	KubernetesService "cicd/pipeci/pool/k8s"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -34,7 +35,10 @@ func declareQueue(ch *amqp.Channel, queueName string) (amqp.Queue, error) {
 	return queue, nil
 }
 
-// create worker instance
+/*
+Create worker instance
+Returns an UUID to match on status command
+*/
 func createWorker(id int, taskChan <-chan amqp.Delivery) {
 	for msg := range taskChan {
 		var task Task
@@ -51,9 +55,20 @@ func createWorker(id int, taskChan <-chan amqp.Delivery) {
 		if err != nil {
 			log.Fatalf("Error marshaling struct to JSON: %v", err)
 		}
+
 		// Process jobs
-		// log.Println(string(jsonBody))
+		/* ---------- Local execution ---------- */
+		// cmd := exec.Command("../worker/worker", "--task", string(jsonBody))
+		// // Capture the output
+		// _, err = cmd.CombinedOutput()
+		// if err != nil {
+		// 	fmt.Println("Error:", err)
+		// }
+		/*--------------------------------------*/
+
+		/* ---------- Kubernetes in-cluster execution ---------- */
 		KubernetesService.CreateWorkerInstance([]string{"--task", string(jsonBody)})
+		/*-------------------------------------------------------*/
 
 		msg.Ack(false) // Acknowledge successful processing
 		log.Printf("[Worker %d] Task %s completed successfully", id, task.Id)

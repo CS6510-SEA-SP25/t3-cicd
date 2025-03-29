@@ -90,6 +90,11 @@ func createPod(clientset *kubernetes.Clientset, podName, namespace, image string
 		// RabbitMQ
 		"RABBITMQ_URL": os.Getenv("RABBITMQ_URL"),
 		"TASK_QUEUE":   os.Getenv("TASK_QUEUE"),
+		// Redis
+		"REDIS_HOST":     os.Getenv("REDIS_HOST"),
+		"REDIS_PORT":     os.Getenv("REDIS_PORT"),
+		"REDIS_USERNAME": os.Getenv("REDIS_USERNAME"),
+		"REDIS_PASSWORD": os.Getenv("REDIS_PASSWORD"),
 	}
 	var envs []corev1.EnvVar
 	for key, value := range envVars {

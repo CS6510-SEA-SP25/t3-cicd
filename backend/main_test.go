@@ -1,8 +1,10 @@
 package main
 
 import (
+	"cicd/pipeci/backend/cache"
 	"cicd/pipeci/backend/db"
 	"cicd/pipeci/backend/models"
+
 	// PipelineService "cicd/pipeci/backend/services/pipeline"
 	// "cicd/pipeci/backend/storage"
 	"cicd/pipeci/backend/types"
@@ -264,7 +266,7 @@ func TestReportStage(t *testing.T) {
 
 func TestReportJob(t *testing.T) {
 	db.Init()
-	// storage.Init()
+
 	router := setupRouter()
 
 	w := httptest.NewRecorder()
@@ -287,6 +289,37 @@ func TestReportJob(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// func cleanup() {
-// 	PipelineService.NewPipelineService(db.Instance).CleanUpTestPipelines()
-// }
+func TestRequestExecutionStatus_Success(t *testing.T) {
+	db.Init()
+	cache.Init()
+
+	router := setupRouter()
+
+	w := httptest.NewRecorder()
+
+	var body = types.RequestExecutionStatus_RequestBody{
+		ExecutionId: "id",
+	}
+	jsonBody, _ := json.Marshal(body)
+	req, err := http.NewRequest("POST", "/status", strings.NewReader(string(jsonBody)))
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Code)
+	assert.NoError(t, err)
+}
+
+func TestRequestExecutionStatus_Error(t *testing.T) {
+	db.Init()
+	cache.Init()
+
+	router := setupRouter()
+
+	w := httptest.NewRecorder()
+
+	var body = ""
+	jsonBody, _ := json.Marshal(body)
+	req, err := http.NewRequest("POST", "/status", strings.NewReader(string(jsonBody)))
+	router.ServeHTTP(w, req)
+
+	assert.NoError(t, err)
+}

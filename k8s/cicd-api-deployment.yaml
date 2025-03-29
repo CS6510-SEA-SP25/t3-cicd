@@ -16,12 +16,12 @@ spec:
         - name: cicd-api
           image: minh160302/cicd-api
           resources:
-              requests:
-                memory: "64Mi"
-                cpu: "500m"
-              limits:
-                memory: "128Mi"
-                cpu: "1000m"
+            requests:
+              memory: "64Mi"
+              cpu: "500m"
+            limits:
+              memory: "128Mi"
+              cpu: "1000m"
           env:
             # MySQL
             - name: DB_HOST
@@ -68,6 +68,18 @@ spec:
               value: amqp://guest:guest@rabbitmq:5672/
             - name: TASK_QUEUE
               value: task_queue
+            # Redis
+            - name: REDIS_HOST
+              value: "redis-14178.c258.us-east-1-4.ec2.redns.redis-cloud.com"
+            - name: REDIS_PORT
+              value: "14178"
+            - name: REDIS_USERNAME
+              value: "default"
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-secret
+                  key: REDIS_PASSWORD
           ports:
             - containerPort: 8080
           volumeMounts:
