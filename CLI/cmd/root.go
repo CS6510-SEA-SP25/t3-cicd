@@ -310,7 +310,7 @@ var RunCmd = &cobra.Command{
 			return err
 		}
 
-		// TODO 1: --local: 
+		// TODO 1: --local:
 		// TODO 2: no local: run the deployed version
 		if isLocal {
 			var repository schema.Repository

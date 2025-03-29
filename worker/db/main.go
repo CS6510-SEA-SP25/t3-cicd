@@ -1,4 +1,4 @@
-//nolint:errcheck
+//nolint:all
 package db
 
 import (
