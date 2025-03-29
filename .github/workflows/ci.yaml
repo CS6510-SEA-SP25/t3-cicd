@@ -48,6 +48,8 @@ jobs:
       DB_USER: root
       DB_PASSWORD: root
       DB_HOST: localhost
+      DB_PORT: 3306
+      DB_SSL_MODE: false
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       MINIO_ENDPOINT: localhost:9000
       MINIO_ACCESS_KEY: minioadmin
@@ -215,6 +217,8 @@ jobs:
       DB_USER: root
       DB_PASSWORD: root
       DB_HOST: localhost
+      DB_PORT: 3306
+      DB_SSL_MODE: false
       RABBITMQ_URL: amqp://guest:guest@localhost:5672/
       TASK_QUEUE: task_queue
       REDIS_USERNAME: default
@@ -354,6 +358,8 @@ jobs:
       DB_USER: root
       DB_PASSWORD: root
       DB_HOST: localhost
+      DB_PORT: 3306
+      DB_SSL_MODE: false
       MINIO_ENDPOINT: localhost:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
