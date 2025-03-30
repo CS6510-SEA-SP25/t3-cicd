@@ -14,21 +14,34 @@ spec:
     spec:
       containers:
         - name: cicd-api
-          image: minh160302/cicd-api:test0.0.4
+          image: minh160302/cicd-api
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "500m"
+            limits:
+              memory: "128Mi"
+              cpu: "1000m"
           env:
+            # MySQL
             - name: DB_HOST
-              value: mysql
+              value: "mysql-3a59b330-auction-mysql.f.aivencloud.com"
             - name: DB_PORT
-              value: "3306"
+              value: "15718"
             - name: DB_USER
-              value: root
+              value: "avnadmin"
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: mysql-secret
-                  key: MYSQL_ROOT_PASSWORD
+                  key: DB_PASSWORD
             - name: DB_NAME
               value: CicdApplication
+            # Aiven SSL
+            - name: DB_SSL_MODE
+              value: "true"
+            - name: DB_SSL_CA
+              value: "/etc/ssl/certs/ca.pem"
             # GitHub
             - name: GITHUB_TOKEN
               valueFrom:
@@ -50,16 +63,39 @@ spec:
               value: minio.default.svc.cluster.local
             - name: DEFAULT_BUCKET
               value: default
+            # RabbitMQ
+            - name: RABBITMQ_URL
+              value: amqp://guest:guest@rabbitmq:5672/
+            - name: TASK_QUEUE
+              value: task_queue
+            # Redis
+            - name: REDIS_HOST
+              value: "redis-14178.c258.us-east-1-4.ec2.redns.redis-cloud.com"
+            - name: REDIS_PORT
+              value: "14178"
+            - name: REDIS_USERNAME
+              value: "default"
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-secret
+                  key: REDIS_PASSWORD
           ports:
             - containerPort: 8080
           volumeMounts:
             - name: docker-sock
               mountPath: /var/run/docker.sock
+            - name: ca-cert
+              mountPath: /etc/ssl/certs/ca.pem
+              subPath: ca.pem
       volumes:
         - name: docker-sock
           hostPath:
             path: /var/run/docker.sock
             type: Socket
+        - name: ca-cert
+          secret:
+            secretName: db-ca-cert
 ---
 apiVersion: v1
 kind: Service

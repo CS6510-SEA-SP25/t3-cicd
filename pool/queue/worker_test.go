@@ -1,7 +1,7 @@
 package queue
 
 import (
-	"cicd/pipeci/worker/types"
+	"cicd/pipeci/pool/types"
 	"encoding/json"
 	"os"
 	"testing"

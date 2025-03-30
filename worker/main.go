@@ -1,41 +1,44 @@
 package main
 
 import (
+	"cicd/pipeci/worker/cache"
+	DockerService "cicd/pipeci/worker/containers/docker"
 	"cicd/pipeci/worker/db"
-	"cicd/pipeci/worker/queue"
 	"cicd/pipeci/worker/storage"
+	"cicd/pipeci/worker/types"
+	"encoding/json"
+	"flag"
 	"log"
-	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
 
-func setupRouter() *gin.Engine {
-	// Force log's color
-	gin.ForceConsoleColor()
-	gin.DebugPrintRouteFunc = func(httpMethod, absolutePath, handlerName string, nuHandlers int) {
-		log.Printf("endpoint %v %v %v %v\n", httpMethod, absolutePath, handlerName, nuHandlers)
+// Task struct
+type Task struct {
+	Id      string                         `json:"id"`
+	Message types.ExecuteLocal_RequestBody `json:"message"`
+}
+
+/* Process task received from message queue */
+func processTask(jsonInput string) error {
+	// Parse the JSON input
+	var task Task
+	if err := json.Unmarshal([]byte(jsonInput), &task); err != nil {
+		log.Printf("[Worker] Error JSON Unmarshalling: %v", err)
+		return err
 	}
 
-	// router := gin.Default()
-	router := gin.New()
+	log.Printf("[Worker] JSON parsed done.")
 
-	// Global middleware
-	// Logger middleware will write the logs to gin.DefaultWriter even if you set with GIN_MODE=release.
-	// By default gin.DefaultWriter = os.Stdout
-	router.Use(gin.Logger())
+	// Execute the Docker service
+	err := DockerService.Execute(task.Id, task.Message.Pipeline, task.Message.Repository)
+	if err != nil {
+		log.Printf("[Worker] Error executing pipeline: %v", err)
+		return err
+	}
 
-	// Recovery middleware recovers from any panics and writes a 500 if there was one.
-	router.Use(gin.Recovery())
-
-	// Ping
-	router.GET("/", ping)
-
-	// Consime messages in the background
-	go queue.Consume()
-
-	return router
+	log.Printf("[Worker] Task %s completed successfully", task.Id)
+	return nil
 }
 
 func main() {
@@ -52,12 +55,19 @@ func main() {
 	// Init artifact storage
 	storage.Init()
 
-	router := setupRouter()
+	// Init cache
+	cache.Init()
 
-	// Expose
-	_ = router.Run("0.0.0.0:8081")
-}
+	// Parse command-line flags
+	jsonInput := flag.String("task", "", "Task JSON input")
+	flag.Parse()
 
-func ping(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, gin.H{"success": true})
+	// JSON passed via CLI flag
+	if *jsonInput != "" {
+		if err := processTask(*jsonInput); err != nil {
+			log.Fatalf("[Worker] Task failed: %v", err)
+		}
+	}
+
+	log.Println("[Worker] Pipeline execution complete.")
 }

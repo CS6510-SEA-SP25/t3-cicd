@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cicd/pipeci/backend/cache"
 	"cicd/pipeci/backend/db"
 	"cicd/pipeci/backend/routes"
 	"log"
@@ -38,6 +39,9 @@ func setupRouter() *gin.Engine {
 	// Execute endpoints
 	router.POST("/execute/local", routes.ExecuteLocal)
 
+	// Status endpoints
+	router.POST("/status", routes.RequestExecutionStatus)
+
 	return router
 }
 
@@ -52,8 +56,8 @@ func main() {
 	// Init database
 	db.Init()
 
-	// // Init artifact storage
-	// storage.Init()
+	// Init Redis
+	cache.Init()
 
 	// Setup Gin Router
 	router := setupRouter()

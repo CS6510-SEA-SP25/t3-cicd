@@ -1,12 +1,15 @@
+//nolint:errcheck
 package queue
 
 import (
-	DockerService "cicd/pipeci/worker/containers/docker"
-	"cicd/pipeci/worker/types"
+	"cicd/pipeci/pool/types"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+
+	// "os/exec"
+	KubernetesService "cicd/pipeci/pool/k8s"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -17,29 +20,8 @@ type Task struct {
 	Message types.ExecuteLocal_RequestBody `json:"message"`
 }
 
-// Connects to RabbitMQ and returns the connection and channel.
-func ConnectRabbitMQ() (*amqp.Connection, *amqp.Channel, error) {
-	rabbitMQURL := os.Getenv("RABBITMQ_URL")
-	if rabbitMQURL == "" {
-		rabbitMQURL = "amqp://guest:guest@localhost:5672/"
-	}
-
-	conn, err := amqp.Dial(rabbitMQURL)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to connect to RabbitMQ: %v", err)
-	}
-
-	ch, err := conn.Channel()
-	if err != nil {
-		conn.Close()
-		return nil, nil, fmt.Errorf("failed to open a channel: %v", err)
-	}
-
-	return conn, ch, nil
-}
-
 // Declares a durable queue in RabbitMQ.
-func DeclareQueue(ch *amqp.Channel, queueName string) (amqp.Queue, error) {
+func declareQueue(ch *amqp.Channel, queueName string) (amqp.Queue, error) {
 	queue, err := ch.QueueDeclare(
 		queueName,
 		true,
@@ -54,8 +36,11 @@ func DeclareQueue(ch *amqp.Channel, queueName string) (amqp.Queue, error) {
 	return queue, nil
 }
 
-// Worker function for parallel processing
-func worker(id int, taskChan <-chan amqp.Delivery) {
+/*
+Create worker instance
+Returns an UUID to match on status command
+*/
+func createWorker(id int, taskChan <-chan amqp.Delivery) {
 	for msg := range taskChan {
 		var task Task
 		if err := json.Unmarshal(msg.Body, &task); err != nil {
@@ -66,17 +51,28 @@ func worker(id int, taskChan <-chan amqp.Delivery) {
 		}
 
 		log.Printf("[Worker %d] Processing task: %s\n", id, task.Id)
-		err := DockerService.Execute(task.Message.Pipeline, task.Message.Repository)
 
+		jsonBody, err := json.Marshal(task)
 		if err != nil {
-			log.Printf("[Worker %d] Error executing pipeline: %v", id, err)
-			//nolint
-			msg.Nack(false, false) // Reject message without requeueing
-		} else {
-			//nolint
-			msg.Ack(false) // Acknowledge successful processing
-			log.Printf("[Worker %d] Task %s completed successfully", id, task.Id)
+			log.Fatalf("Error marshaling struct to JSON: %v", err)
 		}
+
+		// Process jobs
+		/* ---------- Local execution ---------- */
+		// cmd := exec.Command("../worker/worker", "--task", string(jsonBody))
+		// // Capture the output
+		// _, err = cmd.CombinedOutput()
+		// if err != nil {
+		// 	fmt.Println("Error:", err)
+		// }
+		/*--------------------------------------*/
+
+		/* ---------- Kubernetes in-cluster execution ---------- */
+		KubernetesService.CreateWorkerInstance([]string{"--task", string(jsonBody)})
+		/*-------------------------------------------------------*/
+
+		msg.Ack(false) // Acknowledge successful processing
+		log.Printf("[Worker %d] Task %s completed successfully", id, task.Id)
 	}
 }
 
@@ -107,7 +103,7 @@ func Consume() {
 	defer ch.Close()
 
 	// declare queue
-	queue, err := DeclareQueue(ch, taskQueue)
+	queue, err := declareQueue(ch, taskQueue)
 	if err != nil {
 		log.Printf("DeclareQueue Error: %v", err)
 	}
@@ -135,7 +131,7 @@ func Consume() {
 	// Create worker pool
 	taskChan := make(chan amqp.Delivery, workerCount)
 	for i := 1; i <= workerCount; i++ {
-		go worker(i, taskChan)
+		go createWorker(i, taskChan)
 	}
 
 	log.Printf("Worker pool started with %d workers. Listening for tasks...", workerCount)
