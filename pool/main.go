@@ -47,7 +47,7 @@ func main() {
 
 	// Init database
 	db.Init()
-	
+
 	router := setupRouter()
 
 	// Expose
