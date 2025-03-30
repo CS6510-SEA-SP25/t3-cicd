@@ -21,7 +21,7 @@ func ConnectRabbitMQ() (*amqp.Connection, *amqp.Channel, error) {
 	if rabbitMQURL == "" {
 		rabbitMQURL = "amqp://guest:guest@localhost:5672/"
 	}
-	
+
 	conn, err := amqp.Dial(rabbitMQURL)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect to RabbitMQ: %v", err)

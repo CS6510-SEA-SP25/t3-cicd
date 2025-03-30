@@ -56,6 +56,7 @@ func Init() {
 
 		tlsConfig := &tls.Config{
 			RootCAs: rootCertPool,
+			MinVersion: tls.VersionTLS13,
 		}
 
 		dbTLSConfig := "custom"
