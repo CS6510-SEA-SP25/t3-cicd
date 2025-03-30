@@ -66,14 +66,14 @@ CREATE TABLE Jobs (
 );
 
 
--- Dependencies
-CREATE TABLE Dependencies (
-	parent_id int,
-    child_id int,
-	PRIMARY KEY (parent_id, child_id),
-    FOREIGN KEY (parent_id) REFERENCES Jobs(job_id),
-    FOREIGN KEY (child_id) REFERENCES Jobs(job_id)
-);
+-- -- Dependencies
+-- CREATE TABLE Dependencies (
+-- 	parent_id int,
+--     child_id int,
+-- 	PRIMARY KEY (parent_id, child_id),
+--     FOREIGN KEY (parent_id) REFERENCES Jobs(job_id),
+--     FOREIGN KEY (child_id) REFERENCES Jobs(job_id)
+-- );
 
 
 

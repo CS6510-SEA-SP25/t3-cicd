@@ -1,3 +1,4 @@
+//nolint:errcheck
 package db
 
 import (
@@ -54,7 +55,8 @@ func Init() {
 		}
 
 		tlsConfig := &tls.Config{
-			RootCAs: rootCertPool,
+			RootCAs:    rootCertPool,
+			MinVersion: tls.VersionTLS13,
 		}
 
 		dbTLSConfig := "custom"

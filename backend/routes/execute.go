@@ -12,11 +12,11 @@ import (
 	"github.com/google/uuid"
 )
 
-func enqueue(body types.ExecuteLocal_RequestBody) error {
+func enqueue(body types.ExecuteLocal_RequestBody) (string, error) {
 	// Connect to RabbitMQ
 	conn, ch, err := queue.ConnectRabbitMQ()
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer conn.Close()
 	defer ch.Close()
@@ -24,7 +24,7 @@ func enqueue(body types.ExecuteLocal_RequestBody) error {
 	// Declare the queue
 	q, err := queue.DeclareQueue(ch)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Generate UUID as Task ID
@@ -32,13 +32,13 @@ func enqueue(body types.ExecuteLocal_RequestBody) error {
 	task := queue.Task{Id: taskId.String(), Message: body}
 	if err := queue.EnqueueTask(ch, q.Name, task); err != nil {
 		log.Printf("Error enqueuing task: %v", err)
-		return err
+		return "", err
 	}
 
-	return nil
+	return taskId.String(), nil
 }
 
-/* Execute pipeline for local repo */
+/* Execute pipeline for local repo and return an UUID as execution id */
 func ExecuteLocal(c *gin.Context) {
 	var body types.ExecuteLocal_RequestBody
 	err := c.ShouldBindJSON(&body)
@@ -46,14 +46,14 @@ func ExecuteLocal(c *gin.Context) {
 		return
 	}
 
-	err = enqueue(body)
+	taskId, err := enqueue(body)
 
 	// err = DockerService.Execute(body.Pipeline, body.Repository)
 	if err != nil {
 		log.Printf("ExecuteLocal %v", err)
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 	} else {
-		c.IndentedJSON(http.StatusOK, gin.H{"success": true})
+		c.IndentedJSON(http.StatusOK, gin.H{"success": true, "executionId": taskId})
 	}
 	log.Print("reach here!\n")
 }

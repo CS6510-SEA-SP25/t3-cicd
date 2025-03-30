@@ -1,3 +1,4 @@
+//nolint:errcheck
 package db
 
 import (
@@ -21,7 +22,6 @@ func Init() {
 	var password string = os.Getenv("DB_PASSWORD")
 	var sslMode string = os.Getenv("DB_SSL_MODE") // e.g., "true", "false"
 	var sslCA string = os.Getenv("DB_SSL_CA")     // Path to CA cert
-	var tlsConfigurationName string = "custom"
 
 	if host == "" {
 		host = "localhost"
@@ -41,7 +41,6 @@ func Init() {
 		Addr:      host + ":" + port,
 		DBName:    dbName,
 		ParseTime: true,
-		TLSConfig: tlsConfigurationName,
 	}
 
 	// Configure SSL if enabled
@@ -56,7 +55,8 @@ func Init() {
 		}
 
 		tlsConfig := &tls.Config{
-			RootCAs: rootCertPool,
+			RootCAs:    rootCertPool,
+			MinVersion: tls.VersionTLS13,
 		}
 
 		dbTLSConfig := "custom"

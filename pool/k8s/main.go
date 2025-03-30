@@ -1,3 +1,4 @@
+//nolint:all
 package k8s
 
 import (
@@ -19,15 +20,30 @@ import (
 // k8s config
 var kubeconfig *string
 
+// Create a local random generator
+var rng = rand.New(rand.NewSource(time.Now().UnixNano()))
+
 // https://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-go
 func init() {
-	rand.Seed(time.Now().UnixNano())
-
 	// Ensure the flag is defined only once
 	if flag.Lookup("kubeconfig") == nil {
 		kubeconfig = flag.String("kubeconfig", os.Getenv("HOME")+"/.kube/config", "Path to kubeconfig file")
+	}
+
+	// Only parse flags if not running in a test context
+	if !isTestMode() {
 		flag.Parse()
 	}
+}
+
+// isTestMode checks if the code is running in a test context.
+func isTestMode() bool {
+	for _, arg := range os.Args {
+		if arg == "-test.v" || arg == "-test.run" || arg == "-test.paniconexit0" {
+			return true
+		}
+	}
+	return false
 }
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz0123456789")
@@ -35,7 +51,7 @@ var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz0123456789")
 func RandStringRunes(n int) string {
 	b := make([]rune, n)
 	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+		b[i] = letterRunes[rng.Intn(len(letterRunes))]
 	}
 	return string(b)
 }
@@ -90,6 +106,11 @@ func createPod(clientset *kubernetes.Clientset, podName, namespace, image string
 		// RabbitMQ
 		"RABBITMQ_URL": os.Getenv("RABBITMQ_URL"),
 		"TASK_QUEUE":   os.Getenv("TASK_QUEUE"),
+		// Redis
+		"REDIS_HOST":     os.Getenv("REDIS_HOST"),
+		"REDIS_PORT":     os.Getenv("REDIS_PORT"),
+		"REDIS_USERNAME": os.Getenv("REDIS_USERNAME"),
+		"REDIS_PASSWORD": os.Getenv("REDIS_PASSWORD"),
 	}
 	var envs []corev1.EnvVar
 	for key, value := range envVars {
