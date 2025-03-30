@@ -9,20 +9,20 @@ jobs:
   # build
   - name: compile
     stage: build
-    image: maven:3.8.6
+    image: maven
     script:
       - mvn clean install
 
   # test
   - name: run-test
     stage: test
-    image: maven:3.8.6
+    image: maven
     script:
       - mvn test
 
   - name: check-coverage
     stage: test
-    image: maven:3.8.6
+    image: maven
     script:
       - mvn verify
       - mvn jacoco:report
@@ -31,7 +31,7 @@ jobs:
 
   - name: checkstyle
     stage: test
-    image: maven:3.8.6
+    image: maven
     script:
       - mvn checkstyle:check
       - mvn checkstyle:checkstyle
@@ -41,8 +41,8 @@ jobs:
   # docs
   - name: generate-docs
     stage: docs
-    image: maven:3.8.6
-    imge: maven:3.8.6
+    image: maven
+    imge: maven
     script:
-      - ps -u
+      - ls -la
       - mvn javadoc:javadoc
