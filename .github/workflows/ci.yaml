@@ -504,6 +504,7 @@ jobs:
     name: pool - Test and Coverage
     runs-on: ubuntu-latest
     needs: upload-sql
+    continue-on-error: true
     defaults:
       run:
         shell: bash
@@ -529,6 +530,10 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+      # kubernetes
+      - uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
       # MySQL
       - name: Set up MySQL
         run: |

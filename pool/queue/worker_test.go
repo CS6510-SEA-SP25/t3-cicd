@@ -65,9 +65,9 @@ func TestConsume(t *testing.T) {
 	mockCh.On("Consume", "test_queue", "", false, false, false, false, mock.Anything).Return(mockMsg, nil)
 
 	// Run Consume in a separate goroutine
-	// go func() {
-	// 	Consume()
-	// }()
+	go func() {
+		Consume()
+	}()
 
 	time.Sleep(1 * time.Second)
 
