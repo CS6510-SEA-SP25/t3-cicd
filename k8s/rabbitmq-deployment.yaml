@@ -16,12 +16,12 @@ spec:
         - name: rabbitmq
           image: rabbitmq:3-management
           resources:
-              requests:
-                memory: "64Mi"
-                cpu: "500m"
-              limits:
-                memory: "128Mi"
-                cpu: "1000m"
+            requests:
+              memory: "64Mi"
+              cpu: "500m"
+            limits:
+              memory: "128Mi"
+              cpu: "1000m"
           ports:
             - containerPort: 5672 # AMQP
             - containerPort: 15672 # Management UI
@@ -29,7 +29,10 @@ spec:
             - name: RABBITMQ_DEFAULT_USER
               value: "guest"
             - name: RABBITMQ_DEFAULT_PASS
-              value: "guest"
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-credentials
+                  key: password
 ---
 apiVersion: v1
 kind: Service

@@ -1,0 +1,41 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - hpa.cicd.operator
+  resources:
+  - endpoints
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - hpa.cicd.operator
+  resources:
+  - poolscalers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - hpa.cicd.operator
+  resources:
+  - poolscalers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - hpa.cicd.operator
+  resources:
+  - poolscalers/status
+  verbs:
+  - get
+  - patch
+  - update
