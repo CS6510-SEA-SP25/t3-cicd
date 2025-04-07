@@ -31,7 +31,8 @@ import (
 )
 
 // namespace where the project is deployed in
-const namespace = "hpa-system"
+// const namespace = "hpa-system"
+const namespace = "default"
 
 // serviceAccountName created for the project
 const serviceAccountName = "hpa-controller-manager"
