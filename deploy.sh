@@ -5,7 +5,7 @@
 # set -x
 
 echo "Install the Operator..."
-helm install minio-operator ./minio/operator
+helm install minio-operator ./operator/minio/operator
 echo "---------------------"
 
 echo "Verify the Operator installation..."
@@ -13,7 +13,7 @@ kubectl get all
 echo "---------------------"
 
 echo "Deploy the Tenant..."
-helm install --values ./minio/values.yaml myminio minio-operator/tenant
+helm install --values ./operator/minio/values.yaml myminio minio-operator/tenant
 echo "---------------------"
 
 echo "Add CA Certificate to Secret..."
