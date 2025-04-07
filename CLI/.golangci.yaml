@@ -2,7 +2,6 @@
 # Reference: https://github.com/cloudflare/cloudflared/blob/master/.golangci.yaml
 
 linters:
-  tests-disable-all: true
   enable:
     - asasalint # Check for pass []any as any in variadic func(...any).
     - asciicheck # Checks that all code identifiers does not have non-ASCII symbols in the name.
@@ -41,6 +40,7 @@ linters:
   # Other linters are disabled, list of all is here: https://golangci-lint.run/usage/linters/
 run:
   timeout: 5m
+  tests: false
 
 # output configuration options
 output:

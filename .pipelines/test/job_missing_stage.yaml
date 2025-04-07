@@ -1,0 +1,17 @@
+version: v0
+
+# Pipeline info
+pipeline:
+  name: job_missing_stage
+
+# List of stages - show order of execution
+stages:
+  - build
+# Stages defined below
+jobs:
+  # build
+  - name: test
+    image: maven
+    script:
+      - ls -la
+      - mvn -v
