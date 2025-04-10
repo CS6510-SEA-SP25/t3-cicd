@@ -61,8 +61,4 @@ spec:
         memory: "1Gi"
 
   scaling:
-    # messagesPerWorker: 1
-    # scaleUpThreshold: 50
-    # scaleDownThreshold: 10
     pollingIntervalSeconds: 5
-    # cooldownPeriodSeconds: 120
