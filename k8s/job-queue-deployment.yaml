@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: rabbitmq
+  name: job-queue
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: rabbitmq
+      app: job-queue
   template:
     metadata:
       labels:
-        app: rabbitmq
+        app: job-queue
     spec:
       containers:
         - name: rabbitmq
@@ -37,15 +37,15 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: rabbitmq
+  name: job-queue
 spec:
   type: LoadBalancer
   selector:
-    app: rabbitmq
+    app: job-queue
   ports:
     - name: amqp
-      port: 5672
+      port: 5673
       targetPort: 5672
     - name: management
-      port: 15672
+      port: 15673
       targetPort: 15672

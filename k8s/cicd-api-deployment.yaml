@@ -65,7 +65,7 @@ spec:
               value: default
             # RabbitMQ
             - name: RABBITMQ_URL
-              value: amqp://guest:guest@rabbitmq:5672/
+              value: amqp://guest:guest@pipeline-queue:5672/
             - name: TASK_QUEUE
               value: task_queue
             # Redis
