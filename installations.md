@@ -23,14 +23,16 @@ pipeci help
 
 ### Backend
 
-For this version, the only way to run the project on local is using minikube. If you prefer run as Go project, please see the [`async`](https://github.com/CS6510-SEA-SP25/t3-cicd/tree/async) branch.
+For this version, the only way to run the project on local is using minikube. We recommend you to increase the resouce capacity of Docker Desktop to at least 6 CPUs and 8GB Memory to avoid crashing or resource limit exceeded while running.
 
-Below is the setup for the minikube cluster. Please follow the instructions at root directory.
+Please follow the instructions at root directory.
+
+To setup for the minikube cluster.
 
 ### 1. Start the minikube cluster
 
 ```bash
-minikube start
+minikube start --cpus=6 --memory=8g
 ```
 
 ### 2. Secrets
@@ -75,9 +77,7 @@ data:
 
 ### 3. CA Certificate
 
-We are using [Aiven](https://aiven.io/mysql) as the managed service for MySQL. As the hosted database is only accessible with SSL, we need a CA certificate file.
-
-Create a `ca.pem` file at root directory.
+We are using [Aiven](https://aiven.io/mysql) as the managed service for MySQL. As the hosted database is only accessible with SSL, we need a CA certificate file. Create a `ca.pem` file and place at the root directory.
 
 ```text
 -----BEGIN CERTIFICATE-----
@@ -107,15 +107,70 @@ NOTE: Please wait until all pods runs successfully before moving on to the next 
 
 ### 5. Deploy operator
 
+Deploy the controller to the cluster. This has to be done with _multiple terminal windows_.
 
-Deploy the controller to the cluster
+Change directory into the operator codebase
 
 ```bash
-cd operator/hpa && make deploy IMG=minh160302/pooloperator-operator
+cd operator/hpa
 ```
 
-Create a PoolScaler
+Start the operator controller manager
+
+<details>
+<summary>Details for the make command</summary>
+
+**Generate the CustomResourceDefinitions(CRD) manifests**
+
+```bash
+make manifests
+```
+
+**Install the CRDs into the cluster**
+
+```bash
+make install
+```
+
+**Run the controllerr**
+
+```bash
+make run
+```
+
+</details>
+
+```bash
+make manifests install run
+```
+
+On a different terminal window, create PoolScaler resources
 
 ```bash
 kubectl apply -k config/samples/
+```
+
+### 6. Testing
+
+```bash
+pipeci run --local
+```
+
+The system is able to run multiple pipelines asynchronously, but we recommend only run one at a time due to resource allocation limit.
+
+### 7. Dashboards
+
+Check service exposed by `kubectl get svc`. For quick reference:
+
+- MinIO Console at `http://localhost:9090` (minio, minio123)
+- RabbitMQ
+  - Pipeline Queue at `http://localhost:15672` (guest, guest)
+  - Job Queue at `http://localhost:15673` (guest, guest)
+
+### 8. Delete the minikube cluster
+
+The fastest way to clean up all resources is to delete the minikube cluster.
+
+```bash
+minikube delete --all --purge
 ```

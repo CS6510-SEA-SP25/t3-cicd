@@ -200,7 +200,6 @@ func Execute(pipelineExecutionId string, pipeline models.PipelineConfiguration, 
 						}
 						log.Printf("REPORT: Job `%v` is terminated!", job.Name.Value)
 					} else {
-
 						// Execute job then send result to channel
 						err := enqueue(
 							jobExecIdMap[job.Name.Value],
