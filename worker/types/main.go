@@ -28,3 +28,8 @@ type Report_ResponseBody struct {
 	Status    string       `json:"status"`
 	// RunCounter int          `json:"run_counter"`
 }
+
+type JobExecutor_RequestBody struct {
+	Job        models.JobConfiguration `json:"job"`
+	Repository models.Repository       `json:"repository"`
+}

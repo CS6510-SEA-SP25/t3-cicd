@@ -1,8 +1,6 @@
 create database if not exists CicdApplication;
 use CicdApplication;
 
-
-drop table if exists Dependencies;
 drop table if exists Jobs;
 drop table if exists Stages;
 drop table if exists Pipelines;

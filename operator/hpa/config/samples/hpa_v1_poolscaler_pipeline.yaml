@@ -1,0 +1,73 @@
+apiVersion: hpa.cicd.operator/v1
+kind: PoolScaler
+metadata:
+  labels:
+    app.kubernetes.io/name: hpa
+    app.kubernetes.io/managed-by: kustomize
+  name: worker-autoscale
+spec:
+  inputQueue:
+    host: "pipeline-queue"
+    port: 5672
+    username: "guest"
+    passwordSecretRef:
+      name: "rabbitmq-credentials"
+      key: "password"
+    queueName: "task_queue"
+
+  outputQueue:
+    host: "job-queue"
+    port: 5673
+    username: "guest"
+    passwordSecretRef:
+      name: "rabbitmq-credentials"
+      key: "password"
+    queueName: "job_queue"
+
+  database:
+    host: "mysql-3a59b330-auction-mysql.f.aivencloud.com"
+    port: 15718
+    username: "avnadmin"
+    passwordSecretRef:
+      name: "mysql-secret"
+      key: "DB_PASSWORD"
+    name: "CicdApplication"
+    sslMode: "true"
+    sslCASecretRef:
+      name: "db-ca-cert"
+      key: "ca.pem"
+
+  storage:
+    # host: "minio.default.svc.cluster.local"
+    host: "minio"
+    accessKeyRef:
+      name: "minio-keys"
+      key: "CONSOLE_ACCESS_KEY"
+    secretKeyRef:
+      name: "minio-keys"
+      key: "CONSOLE_SECRET_KEY"
+    defaultBucket: "default"
+
+  cache:
+    host: "redis-14178.c258.us-east-1-4.ec2.redns.redis-cloud.com"
+    port: 14178
+    username: "default"
+    passwordSecretRef:
+      name: "redis-secret"
+      key: "REDIS_PASSWORD"
+
+  workerPool:
+    minReplicas: 1
+    maxReplicas: 10
+    workerImage: "minh160302/worker-api"
+    workerImageTag: "latest"
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "256Mi"
+      limits:
+        cpu: "400m"
+        memory: "512Mi"
+
+  scaling:
+    pollingIntervalSeconds: 5

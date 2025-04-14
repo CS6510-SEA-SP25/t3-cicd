@@ -59,7 +59,7 @@ func main() {
 	cache.Init()
 
 	// Parse command-line flags
-	jsonInput := flag.String("task", "", "Task JSON input")
+	jsonInput := flag.String("input", "", "Task JSON input")
 	flag.Parse()
 
 	// JSON passed via CLI flag

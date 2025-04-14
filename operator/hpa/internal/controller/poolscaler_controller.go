@@ -20,13 +20,16 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"reflect"
 	"strings"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/redis/go-redis/v9"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/utils/ptr"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,13 +41,23 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	hpav1 "cicd.operator/hpa/api/v1"
-	v1 "cicd.operator/hpa/api/v1"
 )
+
+type QueueItemWithDependency struct {
+	Id         string              `json:"id"`
+	Dependency map[string][]string `json:"dependency"`
+}
 
 // RabbitMQConnection holds the connection and channel
 type RabbitMQConnection struct {
 	Conn    *amqp.Connection
 	Channel *amqp.Channel
+}
+
+// RedisConnection holds the Redis client connection
+type RedisConnection struct {
+	Client  *redis.Client
+	Context context.Context
 }
 
 // PoolScalerReconciler reconciles a PoolScaler object
@@ -74,7 +87,7 @@ func (r *PoolScalerReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// Fetch the PoolScaler instance
 	// The purpose is check if the Custom Resource for the Kind PoolScaler
 	// is applied on the cluster if not we return nil to stop the reconciliation
-	poolScaler := &v1.PoolScaler{}
+	poolScaler := &hpav1.PoolScaler{}
 	if err := r.Get(ctx, req.NamespacedName, poolScaler); err != nil {
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -83,7 +96,7 @@ func (r *PoolScalerReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	// Get RabbitMQ message count
-	password, err := r.getSecretValue(poolScaler.Namespace, poolScaler.Spec.RabbitMQ.PasswordSecretRef)
+	password, err := r.getSecretValue(poolScaler.Namespace, poolScaler.Spec.InputQueue.PasswordSecretRef)
 	if err != nil {
 		return r.handleError(ctx, poolScaler, "FailedToGetPassword", err)
 	}
@@ -102,7 +115,7 @@ func (r *PoolScalerReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	return r.reconcileDeploymentScaling(ctx, poolScaler, messageCount, password)
 }
 
-func (r *PoolScalerReconciler) reconcileDeploymentScaling(ctx context.Context, poolScaler *v1.PoolScaler, messageCount int32, password string) (ctrl.Result, error) {
+func (r *PoolScalerReconciler) reconcileDeploymentScaling(ctx context.Context, poolScaler *hpav1.PoolScaler, messageCount int32, password string) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
 	// 1. Establish RabbitMQ connection
@@ -110,12 +123,24 @@ func (r *PoolScalerReconciler) reconcileDeploymentScaling(ctx context.Context, p
 	if err != nil {
 		return r.handleError(ctx, poolScaler, "RabbitMQConnectionFailed", err)
 	}
-	defer rmqConn.Conn.Close()
+	defer r.closeRabbitMQ(rmqConn)
 
-	// 2. Process messages
+	// 2. Establish Redis connection
+	// redisPassword, err := r.getRedisPassword(ctx, poolScaler)
+	// if err != nil {
+	// 	return r.handleError(ctx, poolScaler, "GetRedisPasswordFailed", err)
+	// }
+
+	// redisConn, err := r.connectRedis(poolScaler, redisPassword)
+	// if err != nil {
+	// 	return r.handleError(ctx, poolScaler, "RedisConnectionFailed", err)
+	// }
+	// defer r.closeRedis(redisConn)
+
+	// 3. Process new messages polling from the queue
 	for i := int32(0); i < messageCount; i++ {
 		// Get message from queue
-		msg, err := r.consumeMessage(rmqConn, poolScaler.Spec.RabbitMQ.QueueName)
+		msg, err := r.consumeMessage(rmqConn, poolScaler.Spec.InputQueue.QueueName)
 		if err != nil {
 			log.Error(err, "Failed to get message")
 			continue
@@ -144,7 +169,7 @@ func (r *PoolScalerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *PoolScalerReconciler) handleError(ctx context.Context, poolScaler *v1.PoolScaler, reason string, err error) (ctrl.Result, error) {
+func (r *PoolScalerReconciler) handleError(ctx context.Context, poolScaler *hpav1.PoolScaler, reason string, err error) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
 	poolScaler.Status.Phase = "Error"
@@ -166,8 +191,8 @@ func (r *PoolScalerReconciler) handleError(ctx context.Context, poolScaler *v1.P
 }
 
 // Fetch svc Kubernetes endpoint of RabbitMQ
-func (r *PoolScalerReconciler) getServiceEndpoint(ctx context.Context, serviceHost string, instance *v1.PoolScaler) (string, error) {
-	log.Printf("getServiceEndpoint %s", serviceHost)
+func (r *PoolScalerReconciler) getServiceEndpoint(ctx context.Context, serviceHost string, instance *hpav1.PoolScaler) (string, error) {
+	// log.Printf("getServiceEndpoint %s", serviceHost)
 	// If host is already a full URL, use it directly
 	if strings.Contains(serviceHost, ".") {
 		return serviceHost, nil
@@ -176,7 +201,7 @@ func (r *PoolScalerReconciler) getServiceEndpoint(ctx context.Context, serviceHo
 	// Get service details
 	svc, err := r.Clientset.CoreV1().Services(instance.Namespace).Get(
 		ctx,
-		serviceHost, // "rabbitmq" or "minio"
+		serviceHost, // "pipeline-queue" or "job-queue" or "minio"
 		metav1.GetOptions{},
 	)
 	if err != nil {
@@ -200,7 +225,7 @@ func (r *PoolScalerReconciler) getServiceEndpoint(ctx context.Context, serviceHo
 }
 
 // Get secret values
-func (r *PoolScalerReconciler) getSecretValue(namespace string, secretRef v1.SecretReference) (string, error) {
+func (r *PoolScalerReconciler) getSecretValue(namespace string, secretRef hpav1.SecretReference) (string, error) {
 	secret := &corev1.Secret{}
 	err := r.Get(context.Background(),
 		types.NamespacedName{
@@ -222,7 +247,7 @@ func (r *PoolScalerReconciler) getSecretValue(namespace string, secretRef v1.Sec
 }
 
 // Gets the current message count in the queue
-func (r *PoolScalerReconciler) getQueueMessageCount(poolScaler *v1.PoolScaler, password string) (int32, error) {
+func (r *PoolScalerReconciler) getQueueMessageCount(poolScaler *hpav1.PoolScaler, password string) (int32, error) {
 	// Establish connection
 	rmq, err := r.connectRabbitMQ(poolScaler, password)
 	if err != nil {
@@ -234,7 +259,7 @@ func (r *PoolScalerReconciler) getQueueMessageCount(poolScaler *v1.PoolScaler, p
 	// Declaring creates a queue if it doesn't already exist,
 	// or ensures that an existing queue matches the same parameters.
 	queue, err := rmq.Channel.QueueDeclare(
-		poolScaler.Spec.RabbitMQ.QueueName,
+		poolScaler.Spec.InputQueue.QueueName,
 		true,  // durable
 		false, // autoDelete
 		false, // exclusive
@@ -250,17 +275,17 @@ func (r *PoolScalerReconciler) getQueueMessageCount(poolScaler *v1.PoolScaler, p
 }
 
 // Establishes a new connection to RabbitMQ
-func (r *PoolScalerReconciler) connectRabbitMQ(poolScaler *v1.PoolScaler, password string) (*RabbitMQConnection, error) {
-	host, err := r.getServiceEndpoint(context.Background(), poolScaler.Spec.RabbitMQ.Host, poolScaler)
+func (r *PoolScalerReconciler) connectRabbitMQ(poolScaler *hpav1.PoolScaler, password string) (*RabbitMQConnection, error) {
+	host, err := r.getServiceEndpoint(context.Background(), poolScaler.Spec.InputQueue.Host, poolScaler)
 	if err != nil {
 		return nil, err
 	}
 
 	connString := fmt.Sprintf("amqp://%s:%s@%s:%d",
-		poolScaler.Spec.RabbitMQ.Username,
+		poolScaler.Spec.InputQueue.Username,
 		password,
 		host,
-		poolScaler.Spec.RabbitMQ.Port,
+		poolScaler.Spec.InputQueue.Port,
 	)
 
 	conn, err := amqp.Dial(connString)
@@ -310,7 +335,7 @@ func (r *PoolScalerReconciler) consumeMessage(rmq *RabbitMQConnection, queueName
 }
 
 // Handles creation of pod for a single message
-func (r *PoolScalerReconciler) processSingleMessage(ctx context.Context, poolScaler *v1.PoolScaler, ch *amqp.Channel, msg *amqp.Delivery, index int32) error {
+func (r *PoolScalerReconciler) processSingleMessage(ctx context.Context, poolScaler *hpav1.PoolScaler, ch *amqp.Channel, msg *amqp.Delivery, index int32) error {
 	log := logf.FromContext(ctx)
 
 	// Create pod
@@ -333,21 +358,21 @@ func (r *PoolScalerReconciler) processSingleMessage(ctx context.Context, poolSca
 }
 
 // Create a worker pod to execute one pipeline
-func (r *PoolScalerReconciler) createWorkerPod(poolScaler *v1.PoolScaler, index int32, messageBody []byte) *corev1.Pod {
+func (r *PoolScalerReconciler) createWorkerPod(poolScaler *hpav1.PoolScaler, index int32, messageBody []byte) *corev1.Pod {
 	// Get service endpoints
-	mqHost, err := r.getServiceEndpoint(context.Background(), poolScaler.Spec.RabbitMQ.Host, poolScaler)
+	inputQueueHost, err := r.getServiceEndpoint(context.Background(), poolScaler.Spec.InputQueue.Host, poolScaler)
 	if err != nil {
-		logf.FromContext(context.Background()).Error(err, "Failed to get RabbitMQ Endpoint")
+		logf.FromContext(context.Background()).Error(err, "Failed to get InputQueue Endpoint")
 	}
 	storageHost, err := r.getServiceEndpoint(context.Background(), poolScaler.Spec.Storage.Host, poolScaler)
 	if err != nil {
 		logf.FromContext(context.Background()).Error(err, "Failed to get MinIO Endpoint")
 	}
 
-	podName := fmt.Sprintf("%s-worker-%d-%d", poolScaler.Name, index, time.Now().Unix())
+	podName := fmt.Sprintf("%s-worker-%d-%d", poolScaler.Name, time.Now().Unix(), index)
 
 	// Get secrets
-	mqPassword, _ := r.getSecretValue(poolScaler.Namespace, poolScaler.Spec.RabbitMQ.PasswordSecretRef)
+	inputQueuePassword, _ := r.getSecretValue(poolScaler.Namespace, poolScaler.Spec.InputQueue.PasswordSecretRef)
 	dbPassword, _ := r.getSecretValue(poolScaler.Namespace, poolScaler.Spec.Database.PasswordSecretRef)
 	storageAccessKey, _ := r.getSecretValue(poolScaler.Namespace, poolScaler.Spec.Storage.AccessKeyRef)
 	storageSecretKey, _ := r.getSecretValue(poolScaler.Namespace, poolScaler.Spec.Storage.SecretKeyRef)
@@ -355,17 +380,17 @@ func (r *PoolScalerReconciler) createWorkerPod(poolScaler *v1.PoolScaler, index 
 
 	// Worker environment variables
 	envVars := []corev1.EnvVar{
-		// RabbitMQ
+		// InputQueue
 		{
 			Name: "RABBITMQ_URL",
 			Value: fmt.Sprintf("amqp://%s:%s@%s:%d",
-				poolScaler.Spec.RabbitMQ.Username,
-				mqPassword,
-				mqHost,
-				poolScaler.Spec.RabbitMQ.Port,
+				poolScaler.Spec.InputQueue.Username,
+				inputQueuePassword,
+				inputQueueHost,
+				poolScaler.Spec.InputQueue.Port,
 			),
 		},
-		{Name: "TASK_QUEUE", Value: poolScaler.Spec.RabbitMQ.QueueName},
+		{Name: "TASK_QUEUE", Value: poolScaler.Spec.InputQueue.QueueName},
 		// Database
 		{Name: "DB_HOST", Value: poolScaler.Spec.Database.Host},
 		{Name: "DB_PORT", Value: fmt.Sprintf("%d", poolScaler.Spec.Database.Port)},
@@ -384,6 +409,22 @@ func (r *PoolScalerReconciler) createWorkerPod(poolScaler *v1.PoolScaler, index 
 		{Name: "REDIS_PORT", Value: fmt.Sprintf("%d", poolScaler.Spec.Cache.Port)},
 		{Name: "REDIS_USERNAME", Value: poolScaler.Spec.Cache.Username},
 		{Name: "REDIS_PASSWORD", Value: cachePassword},
+	}
+
+	// OutputQueue
+	if !reflect.DeepEqual(poolScaler.Spec.OutputQueue, hpav1.RabbitMQConfig{}) {
+		outputQueuePassword, _ := r.getSecretValue(poolScaler.Namespace, poolScaler.Spec.OutputQueue.PasswordSecretRef)
+
+		envVars = append(envVars, corev1.EnvVar{
+			Name: "JOB_QUEUE_URL",
+			Value: fmt.Sprintf("amqp://%s:%s@%s:%d",
+				poolScaler.Spec.OutputQueue.Username,
+				outputQueuePassword,
+				poolScaler.Spec.OutputQueue.Host,
+				poolScaler.Spec.OutputQueue.Port,
+			),
+		})
+		envVars = append(envVars, corev1.EnvVar{Name: "JOB_QUEUE_NAME", Value: poolScaler.Spec.OutputQueue.QueueName})
 	}
 
 	// Docker Volume
@@ -424,7 +465,7 @@ func (r *PoolScalerReconciler) createWorkerPod(poolScaler *v1.PoolScaler, index 
 	}
 
 	// Arguments
-	args := []string{"--task", string(messageBody)}
+	args := []string{"--input", string(messageBody)}
 
 	// Create pod with SSL and Docker volumes
 	pod := &corev1.Pod{
@@ -446,6 +487,16 @@ func (r *PoolScalerReconciler) createWorkerPod(poolScaler *v1.PoolScaler, index 
 					Args:         args,
 					Env:          envVars,
 					VolumeMounts: []corev1.VolumeMount{dockerVolumeMount, sslVolumeMount},
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("500m"),  // 0.5 CPU
+							corev1.ResourceMemory: resource.MustParse("256Mi"), // 256MB memory
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("500m"),  // 0.5 CPU
+							corev1.ResourceMemory: resource.MustParse("512Mi"), // 256GB memory
+						},
+					},
 				},
 			},
 			Volumes:                       []corev1.Volume{sslVolume, dockerVolume},

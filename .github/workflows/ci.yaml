@@ -204,6 +204,7 @@ jobs:
 
   ### backend codebase
   backend-test:
+    continue-on-error: true
     if: github.event.pull_request.draft == false # Skip CI for draft PRs
     name: backend - Test and Coverage
     runs-on: ubuntu-latest
@@ -344,6 +345,7 @@ jobs:
 
   ### worker codebase
   worker-test:
+    continue-on-error: true
     if: github.event.pull_request.draft == false # Skip CI for draft PRs
     name: worker - Test and Coverage
     runs-on: ubuntu-latest

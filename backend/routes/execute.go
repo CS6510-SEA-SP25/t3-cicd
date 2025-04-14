@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 )
 
+/* Enqueue task into pipeline_queue */
 func enqueue(body types.ExecuteLocal_RequestBody) (string, error) {
 	// Connect to RabbitMQ
 	conn, ch, err := queue.ConnectRabbitMQ()
