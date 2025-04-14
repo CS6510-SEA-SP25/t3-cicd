@@ -151,7 +151,10 @@ type ScalingConfig struct {
 // PoolScalerSpec defines the desired state of PoolScaler.
 type PoolScalerSpec struct {
 	// +kubebuilder:validation:Required
-	RabbitMQ RabbitMQConfig `json:"rabbitmq"`
+	InputQueue RabbitMQConfig `json:"inputQueue"`
+
+	// +kubebuilder:validation:Optional
+	OutputQueue RabbitMQConfig `json:"outputQueue,omitempty"`
 
 	// +kubebuilder:validation:Required
 	Database DatabaseConfig `json:"database,omitempty"`

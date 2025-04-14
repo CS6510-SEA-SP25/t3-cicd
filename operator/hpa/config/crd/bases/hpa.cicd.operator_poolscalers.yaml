@@ -127,7 +127,38 @@ spec:
                 - passwordSecretRef
                 - username
                 type: object
-              rabbitmq:
+              inputQueue:
+                properties:
+                  host:
+                    type: string
+                  passwordSecretRef:
+                    description: Reference to a Kubernetes Secret containing the password
+                    properties:
+                      key:
+                        type: string
+                      name:
+                        type: string
+                    required:
+                    - key
+                    - name
+                    type: object
+                  port:
+                    default: 5672
+                    format: int32
+                    maximum: 65535
+                    minimum: 1
+                    type: integer
+                  queueName:
+                    type: string
+                  username:
+                    type: string
+                required:
+                - host
+                - passwordSecretRef
+                - queueName
+                - username
+                type: object
+              outputQueue:
                 properties:
                   host:
                     type: string
@@ -281,7 +312,7 @@ spec:
             required:
             - cache
             - database
-            - rabbitmq
+            - inputQueue
             - scaling
             - storage
             - workerPool

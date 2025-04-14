@@ -2,211 +2,60 @@
 package DockerService
 
 import (
-	"bytes"
 	"cicd/pipeci/worker/cache"
 	"cicd/pipeci/worker/db"
 	"cicd/pipeci/worker/models"
+	"cicd/pipeci/worker/queue"
 	JobService "cicd/pipeci/worker/services/job"
 	PipelineService "cicd/pipeci/worker/services/pipeline"
 	StageService "cicd/pipeci/worker/services/stage"
-	"cicd/pipeci/worker/storage"
+	"cicd/pipeci/worker/types"
 	"context"
 	"errors"
-	"fmt"
-	"io"
 	"log"
-	"os"
 	"slices"
 	"strings"
 	"sync"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/client"
+	"github.com/google/uuid"
 )
 
-// Docker Client
-type DockerClient struct {
-	cli *client.Client  // Docker API Client
-	ctx context.Context // Context
-}
-
-/* Initialize Docker client */
-func initDockerClient() (*DockerClient, error) {
-	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return nil, err
-	}
-	return &DockerClient{cli: cli, ctx: ctx}, nil
-}
-
-/* Close the transport used by the client */
-func (dc *DockerClient) Close() {
-	dc.cli.Close()
-}
-
-/* Pull image from Docker hub */
-func (dc *DockerClient) pullImage(imageName string) error {
-	log.Printf("Installing image: %v\n", imageName)
-	reader, err := dc.cli.ImagePull(dc.ctx, imageName, image.PullOptions{})
+/* Enqueue task into job_queue */
+func enqueue(jobExecutionId string, pipelineId, stageId, jobId int,
+	dependency map[string][]string, body types.JobExecutor_RequestBody,
+	jobService *JobService.JobService) error {
+	// Connect to RabbitMQ
+	conn, ch, err := queue.ConnectRabbitMQ()
 	if err != nil {
 		return err
 	}
-	defer reader.Close()
-	// Copy logs to client stdout
-	_, err = io.ReadAll(reader)
-	// _, err = io.Copy(os.Stdout, reader)
-	return err
-}
+	defer conn.Close()
+	defer ch.Close()
 
-/*
-Create Docker container from input image and commands
-
-	Rev #1: Define the bind mount for the workspace
-	* Rev #2: Git clone inside container instead of mounting from local dir
-*/
-func (dc *DockerClient) createContainer(containerName string, imageName string, commands []string) (string, error) {
-	// Combine multiple commands into a single shell command
-	joinedCmd := []string{"sh", "-c", ""}
-	for _, cmd := range commands {
-		joinedCmd[2] += cmd + " && "
-	}
-	joinedCmd[2] = joinedCmd[2][:len(joinedCmd[2])-4]
-
-	resp, err := dc.cli.ContainerCreate(dc.ctx, &container.Config{
-		Image: imageName,
-		Cmd:   joinedCmd,
-	}, &container.HostConfig{
-		// Mounts: mounts,
-	}, nil, nil, "")
-	if err != nil {
-		return "", err
-	}
-
-	// Rename the container with the given prefix
-	newName := containerName + "_" + resp.ID
-	err = dc.cli.ContainerRename(dc.ctx, resp.ID, newName)
-	if err != nil {
-		return "", err
-	}
-	return resp.ID, nil
-}
-
-// deleteContainer deletes a Docker container by its Id
-func (dc *DockerClient) deleteContainer(containerId string) error {
-	options := container.RemoveOptions{
-		Force: true, // Force removal if the container is running
-	}
-	err := dc.cli.ContainerRemove(dc.ctx, containerId, options)
-	return err
-}
-
-/* Start container */
-func (dc *DockerClient) startContainer(containerId string) error {
-	return dc.cli.ContainerStart(dc.ctx, containerId, container.StartOptions{})
-}
-
-/* Wait container */
-func (dc *DockerClient) WaitContainer(containerId string) error {
-	statusCh, errCh := dc.cli.ContainerWait(dc.ctx, containerId, container.WaitConditionNotRunning)
-	select {
-	case err := <-errCh:
-		return err
-	case status := <-statusCh:
-		if status.StatusCode != 0 {
-			return fmt.Errorf("container exited with non-zero status: %d", status.StatusCode)
-		}
-		return nil
-	}
-}
-
-/* Retrieve container logs as byte stream for easier MinIO upload */
-func (dc *DockerClient) getContainerLogs(containerID string) (*bytes.Buffer, error) {
-	log.Printf("START getContainerLogs")
-	// Get container logs
-	out, err := dc.cli.ContainerLogs(dc.ctx, containerID, container.LogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-		Follow:     false,
-		Timestamps: false,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get container logs: %w", err)
-	}
-	defer out.Close()
-
-	// Read logs into a buffer
-	var logBuffer bytes.Buffer
-	_, err = io.Copy(&logBuffer, out)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read container logs: %w", err)
-	}
-
-	return &logBuffer, nil
-}
-
-// Actions on Docker
-func (dc *DockerClient) initContainer(job models.JobConfiguration, repository models.Repository) (string, error) {
-	log.Printf("Running stage `%v`, job: `%v`", job.Stage.Value, job.Name.Value)
-
-	if err := dc.pullImage(job.Image.Value); err != nil {
-		return "", err
-	}
-
-	// Create container
-	containerName := "pipeline_"
-
-	// Checkout code from Github - checkout to specific commit hash
-	var cmds []string
-	cmds = append(cmds, "git clone --no-checkout "+repository.Url+" /tmp/repo")
-	cmds = append(cmds, "cd /tmp/repo")
-	cmds = append(cmds, "git checkout "+repository.CommitHash)
-	cmds = append(cmds, job.Script.Value...)
-
-	// Create container with image and commands to run at start
-	containerId, err := dc.createContainer(containerName, job.Image.Value, cmds)
-	if err != nil {
-		return containerId, err
-	}
-	log.Printf("Container Id for job %v: %v", job.Name.Value, containerId)
-
-	// Start container
-	if err := dc.startContainer(containerId); err != nil {
-		return containerId, err
-	}
-
-	// Wait for completion
-	if err := dc.WaitContainer(containerId); err != nil {
-		return containerId, err
-	}
-
-	// Done
-	log.Printf("Execution done for Container Id %v", containerId)
-	return containerId, nil
-}
-
-/* Take actions after executions: get logs, upload to Minio, then delete containers */
-func (dc *DockerClient) handlePostExecution(containerId string) error {
-	log.Printf("START handlePostExecution")
-	// Retrieve container logs
-	containerLogs, err := dc.getContainerLogs(containerId)
+	// Declare the queue
+	q, err := queue.DeclareQueue(ch)
 	if err != nil {
 		return err
 	}
 
-	// Upload logs to MinIO
-	var minioBucket string = os.Getenv("DEFAULT_BUCKET")
-	err = storage.UploadLogsToMinIO(minioBucket, fmt.Sprintf("containers/%v", containerId), containerLogs)
-	if err != nil {
+	// Generate UUID as Task ID
+	queueItem := queue.QueueItem{
+		Id:         jobExecutionId,
+		PipelineId: pipelineId,
+		StageId:    stageId,
+		JobId:      jobId,
+		Message:    body,
+		Dependency: dependency,
+	}
+
+	// dq := queue.NewDependencyQueue(ch, "job_queue")
+	// dq.EnqueueWithDependencies(queueItem)
+
+	if err := queue.EnqueueJob(ch, q.Name, queueItem, jobService); err != nil {
+		log.Printf("Error enqueuing task: %v", err)
 		return err
 	}
 
-	// Delete container after saving logs
-	dc.deleteContainer(containerId)
-
-	// Done
-	log.Printf("handlePostExecution done for Container Id %v", containerId)
 	return nil
 }
 
@@ -214,47 +63,6 @@ func (dc *DockerClient) handlePostExecution(containerId string) error {
 func matchExecutionIdToPipeline(executionId string, pipelineId int) {
 	ctx := context.Background()
 	cache.Set(ctx, executionId, pipelineId, 0)
-}
-
-/*
-Execute jobs in Docker containers
-Revisions:
-  - Feb 15: Linear execution
-    TODO #1: Parallel execution for single-graph pipeline
-    TODO #2: Parallel execution for multiple-graphs pipeline
-    TODO #3: continue-on-error
-*/
-func executeJob(job models.JobConfiguration, repository models.Repository) (string, error) {
-	log.Printf("START executeJob")
-	dc, err := initDockerClient()
-	if err != nil {
-		return "", err
-	}
-	defer dc.Close()
-
-	containerId, initErr := dc.initContainer(job, repository)
-	postExecErr := dc.handlePostExecution(containerId)
-
-	// If both initContainer and handlePostExecution fail, combine errors
-	if initErr != nil && postExecErr != nil {
-		return containerId, fmt.Errorf(
-			"terminating pipeline execution, caused by failure in running job %#v\nCaused by: %v\nAdditionally, post-execution failed: %v",
-			job.Name.Value, initErr.Error(), postExecErr.Error(),
-		)
-	}
-
-	// Prioritize initErr
-	if initErr != nil {
-		return containerId, fmt.Errorf("terminating pipeline execution, caused by failure in running job %#v\nCaused by: %v",
-			job.Name.Value, initErr.Error(),
-		)
-	}
-
-	// postExecErr
-	if postExecErr != nil {
-		return containerId, fmt.Errorf("post-execution failed for container %s: %v", containerId, postExecErr)
-	}
-	return containerId, nil
 }
 
 /* Job Execution Result models */
@@ -268,12 +76,13 @@ Execute a pipeline and store reports
 TODO #1: Allow failures and update status for failed jobs
 TODO #2: Force stop job(s)
 */
-func Execute(executionId string, pipeline models.PipelineConfiguration, repository models.Repository) error {
+func Execute(pipelineExecutionId string, pipeline models.PipelineConfiguration, repository models.Repository) error {
 	// Service instance
 	var pipelineService = PipelineService.NewPipelineService(db.Instance)
 	var stageService = StageService.NewStageService(db.Instance)
 	var jobService = JobService.NewJobService(db.Instance)
 
+	// Topological order
 	var execOrder = pipeline.ExecOrder
 	var stageOrder = pipeline.StageOrder
 
@@ -295,13 +104,19 @@ func Execute(executionId string, pipeline models.PipelineConfiguration, reposito
 	}
 
 	// Put K-V pair to Redis
-	matchExecutionIdToPipeline(executionId, pipelineReportId)
+	matchExecutionIdToPipeline(pipelineExecutionId, pipelineReportId)
 
 	var pipelineHasFailedStages bool = false
 	var pipelineHasCanceledStages bool = false
 
 	// Execute stage
 	for _, stage := range stageOrder {
+		// Job's execution id dependency map.
+		// This map is in the exact order as job dependency map, but instead using the generated execution uuid.
+		// REASON: The mapping/queueing in operator is asynchronous events -> can't check for real job id.
+		var jobExecIdDependency map[string][]string = make(map[string][]string) // execId1 -> [execId2, execId3]
+		var jobExecIdMap map[string]string = make(map[string]string)            // execId1 -> compile, execId2 -> build
+
 		// Stage execution report
 		var stageReport models.Stage = models.Stage{
 			PipelineId: pipelineReportId,
@@ -317,6 +132,25 @@ func Execute(executionId string, pipeline models.PipelineConfiguration, reposito
 		var stageHasCanceledJobs bool = false
 
 		levels := execOrder[stage]
+
+		// Allocate Job Execution ID
+		for _, level := range levels {
+			for _, name := range level {
+				// Job Async-execution id
+				var jobExecutionId = "job_" + uuid.New().String()
+				jobExecIdDependency[jobExecutionId] = make([]string, 0)
+
+				var job models.JobConfiguration = *pipeline.Stages.Value[stage].Value[name]
+				jobExecIdMap[job.Name.Value] = jobExecutionId
+
+				if job.Dependencies != nil {
+					for _, dep := range job.Dependencies.Value {
+						jobExecIdDependency[jobExecutionId] = append(jobExecIdDependency[jobExecutionId], jobExecIdMap[dep])
+					}
+				}
+			}
+		}
+
 		for _, level := range levels {
 			/* Parallel execution */
 			var wg sync.WaitGroup
@@ -366,23 +200,26 @@ func Execute(executionId string, pipeline models.PipelineConfiguration, reposito
 						}
 						log.Printf("REPORT: Job `%v` is terminated!", job.Name.Value)
 					} else {
+
 						// Execute job then send result to channel
-						// * Update job execution status
-						if containerId, err := executeJob(job, repository); err != nil {
+						err := enqueue(
+							jobExecIdMap[job.Name.Value],
+							pipelineReportId,
+							stageReportId,
+							jobReportId,
+							jobExecIdDependency,
+							types.JobExecutor_RequestBody{
+								Job:        job,
+								Repository: repository,
+							},
+							jobService,
+						)
+
+						if err != nil {
 							errCh <- JobExecResult{Job: job, Err: err} // Send result to channel
-							err = jobService.UpdateJobStatusAndEndTime(jobReportId, containerId, models.FAILED)
-							if err != nil {
-								log.Printf("%v\n", err)
-								errCh <- JobExecResult{Job: job, Err: errors.New("unexpected UpdateJobStatusAndEndTime failed")}
-							}
-							log.Printf("REPORT: Job `%v` run failed!\nCaused by: %v", job.Name.Value, err)
+							log.Printf("REPORT: Job `%v` enqueue failed!\nCaused by: %v", job.Name.Value, err)
 						} else {
-							err = jobService.UpdateJobStatusAndEndTime(jobReportId, containerId, models.SUCCESS)
-							if err != nil {
-								log.Printf("%v\n", err)
-								errCh <- JobExecResult{Job: job, Err: errors.New("unexpected UpdateJobStatusAndEndTime failed")}
-							}
-							log.Printf("REPORT: Job `%v` run success!\n", job.Name.Value)
+							log.Printf("REPORT: Job `%v` enqueue successfully!\n", job.Name.Value)
 						}
 					}
 				}(name)

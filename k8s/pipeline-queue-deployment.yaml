@@ -17,11 +17,17 @@ spec:
           image: rabbitmq:3-management
           resources:
             requests:
-              memory: "64Mi"
+              memory: "256Mi"
               cpu: "500m"
             limits:
-              memory: "128Mi"
+              memory: "512Mi"
               cpu: "1000m"
+            # requests:
+            #   memory: "1Gi" # Minimum recommended
+            #   cpu: "500m"
+            # limits:
+            #   memory: "2Gi" # Better for production
+            #   cpu: "2000m" # RabbitMQ benefits from more CPU
           ports:
             - containerPort: 5672 # AMQP
             - containerPort: 15672 # Management UI

@@ -271,7 +271,7 @@ func Execute(pipelineReportId, stageReportId, jobReportId int, executionId strin
 	var jobService = JobService.NewJobService(db.Instance)
 
 	// Put K-V pair to Redis
-	matchExecutionIdToJob(executionId, pipelineReportId)
+	matchExecutionIdToJob(executionId, jobReportId)
 
 	// * Execute job and update job/stage/pipeline execution status
 	if containerId, err := executeJob(job, repository); err != nil {

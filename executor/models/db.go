@@ -53,9 +53,3 @@ type Job struct {
 	EndTime     sql.NullTime `json:"end_time" db:"end_time"`
 	ContainerId string       `json:"container_id" db:"container_id"`
 }
-
-// Dependencies
-type Dependency struct {
-	ParentId int `json:"parent_id" db:"parent_id"`
-	ChildId  int `json:"child_id" db:"child_id"`
-}

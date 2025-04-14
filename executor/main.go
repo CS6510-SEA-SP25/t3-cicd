@@ -20,6 +20,7 @@ type QueueItem struct {
 	StageId    int                           `json:"stageId"`
 	PipelineId int                           `json:"pipelineId"`
 	Message    types.JobExecutor_RequestBody `json:"message"`
+	Dependency map[string][]string           `json:"dependency"`
 }
 
 /* Process QueueItem received from message queue */
@@ -31,7 +32,8 @@ func processQueueItem(jsonInput string) error {
 		return err
 	}
 
-	log.Printf("[Executor] JSON parsed done.")
+	log.Println("[Executor] JSON parsed done.")
+	log.Printf("%v\n", queueItem)
 
 	// Execute the Docker service
 	err := DockerService.Execute(
@@ -68,7 +70,7 @@ func main() {
 	cache.Init()
 
 	// Parse command-line flags
-	jsonInput := flag.String("job", "", "Job JSON input")
+	jsonInput := flag.String("input", "", "Job JSON input")
 	flag.Parse()
 
 	// JSON passed via CLI flag

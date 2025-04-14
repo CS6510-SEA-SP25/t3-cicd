@@ -59,3 +59,19 @@ func (service *JobService) UpdateJobStatusAndEndTime(jobID int, containerId stri
 
 	return nil
 }
+
+// GetJobStatus retrieves the status of a job by its ID
+func (service *JobService) GetJobStatus(jobID int) (string, error) {
+	var status string
+	err := service.db.QueryRow(
+		"SELECT status FROM Jobs WHERE job_id = ?",
+		jobID,
+	).Scan(&status)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", fmt.Errorf("GetJobStatus: no job found with ID %d", jobID)
+		}
+		return "", fmt.Errorf("GetJobStatus: %v", err)
+	}
+	return status, nil
+}
