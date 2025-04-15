@@ -29,7 +29,6 @@ spec:
       key: "ca.pem"
 
   storage:
-    # host: "minio.default.svc.cluster.local"
     host: "minio"
     accessKeyRef:
       name: "minio-keys"

@@ -48,8 +48,7 @@ Each component has a different role:
 - **CICD API**: push pipeline executions into a message queue, and perform other reads operations. This is a read-only service.
 - **Key-Value Store**: used for async execution (Redis).
 - **Message queue**: process async executions (RabbitMQ).
-- **Worker Pool**: listen to the message queue and create a Worker per pipeline. This is written as an Kubernetes Operator.
-- **Worker**: a Worker (Kubernetes Pod) to execute a pipeline. These pods are write-only.
+- **Worker Autoscaler**: a CustomResource created by the PoolScaler operator
 - **Database**: store pipeline execution status
 - **Artifact Storage**: store execution logs
 
@@ -67,12 +66,15 @@ Description
 
 1. **User** triggers pipeline via CLI.
 2. **CLI Application** validate configuration file.
-3. **CICD API**: enqueues item into the message queue. Each item consists of the pipeline data and a generated UUID. Returns this UUID to user
-4. **Worker Pool** listens to the message queue and autoscales the number of pods every `PollingIntervalSeconds` seconds.
-5. For each message consumed, **Worker Pool** creates a **Worker** pod to execute the pipeline.
-6. Upon database records created, store a pair of (UUID -> PipelineID) in the **KV store**
-7. **CICD API** can get pipeline status during execution by matching this pair **in KV Store**.
-8. Pipeline execution status are updated in **Database**.
-9. On completion, execution logs are stored in **Artifact Storage**.
+3. **CICD API**: enqueues item into the Pipeline Queue. Each item consists of the pipeline data and a generated UUID. Returns this UUID to user
+4. **Worker Pool** listens to the Pipeline Queue and autoscales the number of pods every `PollingIntervalSeconds` seconds.
+5. For each message consumed, **Worker Pool** creates a **Worker** pod to process the pipeline.
+6. The **Worker** checks if jobs are ready to be executed (check for dependency jobs completion), then enqueue jobs in into a Job Queue.
+7. **Executor Pool** listens to the Job Queue and autoscales the number of pods.
+8. For each message consumed, **Executor Pool** creates a **Executor** pod to execute the job. Theses pods run the scripts specified in the config file.
+9. When pipeline and job data are stored in the database, store a pair of (UUID -> PipelineID/JobID) in the **KV store**.
+10. **CICD API** and **Worker Pods** can get pipeline status during execution by matching this pair **in KV Store**.
+11. Pipeline execution status are updated in **Database**.
+12. On completion, execution logs are stored in **Artifact Storage**.
 
 ---
